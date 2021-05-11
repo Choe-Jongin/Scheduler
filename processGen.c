@@ -56,10 +56,10 @@ int main(int argc, char * argv[])
 		{
 			char processname[64];
 			int arrivtime 	= 0 + rand()%(10*1000);
-			int deadline	= 25 + rand()%225;
-			int bursttime 	= (deadline*(rand()%60))/100;
-			sprintf(processname,"%c%c%c%c%d", (65+rand()%26), (65+rand()%26), (65+rand()%26), (65+rand()%26), rand()%10000);
-			fprintf(file,"%s, %d, %d, %d\n",processname, arrivtime, bursttime, deadline);
+			int deadline	= 100 + rand()%901;
+			int bursttime 	= (deadline*(rand()%10))/100;
+			sprintf(processname,"%c%c%c%c%04d", (65+rand()%26), (65+rand()%26), (65+rand()%26), (65+rand()%26), rand()%10000);
+			fprintf(file,"%s %d %d %d\n",processname, arrivtime, bursttime, deadline);
 		}
 		break;
 
