@@ -175,3 +175,13 @@ void printNodeData( Queue * queue )
 			data->name, (int)data->arrivaltime, (int)data->bursttime,  (int)data->deadline,  (int)data->remaintime, data->state);
 	}
 }
+
+void destroyQueue(Queue * queue)
+{	
+	while( queue->head != queue->endnode )
+	{
+		Node * node = popQueue(queue);
+		free(node->data);
+		free(node);
+	}
+}
