@@ -8,7 +8,7 @@
 Queue * g_processlist;	//모든 프로세서의 목록(아직 스케줄링 큐에 올라가진 않음)
 int main(int argc, char *argv[] )
 {
-	g_processlist = newQueue();
+	g_processlist = newQueue(0);
 	
 	//file read
 	FILE * file = fopen("process.txt","r");
@@ -19,7 +19,7 @@ int main(int argc, char *argv[] )
     	char name[64];
 		int arr, burst, dead;
 		fscanf(file, "%s %d %d %d",name, &arr, &burst, &dead);
-		insertQueue(g_processlist, newNode(newProcess(name,arr,burst,dead)));
+		insertNewNode(g_processlist, newProcess(name,arr,burst,dead));
 	}
 
 	printQueue(g_processlist); 		//노드 주소 확인

@@ -1,8 +1,9 @@
 #pragma once
 #include "process.h"
 
-#define PRIORITY_ALGORITHM 0
+#define PRIORITY_ALGORITHM 1
 
+//Node
 typedef struct element
 {
 	struct element * prev;
@@ -16,9 +17,12 @@ int getPriority( Process * proc,int type )
 {
 	if( proc == NULL )
 			return 0;
+
  	switch( type )
 	{
-	case 0:	//RM
+	case 0:	//도착시간 순 
+		return proc->arrivaltime;
+	case 1:	//데드라인 적은 순(RM)
 		return proc->deadline;
 	}
 
@@ -26,41 +30,53 @@ int getPriority( Process * proc,int type )
 }
 
 //새 노드
-Node * newNode(Process * proc)
+Node * newNode(Process * proc, int pp)
 {
 	Node * newnode		= (Node*)malloc(sizeof(Node));
 	newnode->prev 		= NULL;
 	newnode->next 		= NULL;
 	newnode->data 		= proc;
-	newnode->priority	= getPriority(proc, PRIORITY_ALGORITHM); // RM scheduling	
+	newnode->priority	= getPriority(proc, pp); // RM scheduling	
 	return newnode;
 }
-Node * endnode; //더미노드
 
+
+//Queue
 typedef struct runqueue
 {
 	int size;
 	Node * head;
 	Node * tail;
+	int pp; // priority policy
+	Node * endnode; //더미노드
 }Queue;
 
-
 //새 큐
-Queue * newQueue()
+Queue * newDefaultQueue()
 {
-	endnode = newNode(NULL); //더미노드
 	Queue * newq = (Queue*)malloc(sizeof(Queue));
+	newq->endnode = newNode(NULL, 0); //더미노드
 	
 	newq->size = 0;
-	newq->head = endnode;
-	newq->tail = endnode;
+	newq->head = newq->endnode;
+	newq->tail = newq->endnode;
+	newq->pp = 0;
+
+	return newq;
+}
+Queue * newQueue(int pp)
+{
+	Queue * newq = newDefaultQueue();
+	newq->pp = pp;
+
+	return newq;
 }
 
 //큐에 삽입
-void insertQueue( Queue * queue, Node * node )
+void insertNode( Queue * queue, Node * node )
 {
 	//큐가 비었으면 
-	if( queue->head == endnode )
+	if( queue->head == queue->endnode )
 	{
 		queue->head = node;
 		queue->head->next = queue->tail;
@@ -78,7 +94,7 @@ void insertQueue( Queue * queue, Node * node )
 	{
 		//순차 탐색
 		Node * it = queue->head;
-		for( it = queue->head ; it != endnode ; it = it->next )
+		for( it = queue->head ; it != queue->endnode ; it = it->next )
 		{
 			//순차 탐색 중 새 노드보다 우선순위가 낮은 기존의 노드 발견시
 			if( node->priority < it->priority )
@@ -92,7 +108,7 @@ void insertQueue( Queue * queue, Node * node )
 			}
 		}
 		//우선순위가 더 낮은 기존 노드를 찾지 못했으면 맨뒤(더미노드 앞)에 삽입
-		if( it == endnode )
+		if( it == queue->endnode )
 		{
 			it = it->prev;
 			it->next = node;
@@ -105,12 +121,16 @@ void insertQueue( Queue * queue, Node * node )
 
 	queue->size++;
 }
+void insertNewNode( Queue * queue, Process * proc )
+{
+	insertNode(queue, newNode(proc, queue->pp));
+}
 
 //큐에서 맨 앞 노드 추출(삭제)
 Node * popQueue( Queue * queue)
 {
 	//큐가 비었으면 
-	if( queue->head <= endnode )
+	if( queue->head <= queue->endnode )
 			return NULL;
 
 	Node * tempnode = queue->head;
@@ -126,17 +146,19 @@ Node * popQueue( Queue * queue)
 //모든 노드 출력 
 void printQueue( Queue * queue )
 {
-	printf("head:%p, tail:%p, end:%p\n", queue->head, queue->tail, endnode);
-	for( Node * it = queue->head ; it != endnode ; it = it->next )
+	printf("size:%d\n", queue->size);
+	printf("head:%p, tail:%p, end:%p\n", queue->head, queue->tail, queue->endnode);
+	int index = 0;
+	for( Node * it = queue->head ; it != queue->endnode ; it = it->next )
 	{
-		printf("this:%p, prev:%p, next:%p\n", it ,it->prev, it->next);
+		printf("%03d. this:%p, prev:%p, next:%p\n", index++,it ,it->prev, it->next);
 	}
 }
 //모든 노드 내용 출력
 void printNodeData( Queue * queue )
 {
 	Process * data;
-	for( Node * it = queue->head ; it != endnode ; it = it->next )
+	for( Node * it = queue->head ; it != queue->endnode ; it = it->next )
 	{
 		data = it -> data;
 		printf("[%s]arr:%d, burst:%d, deadline:%d, remain:%d, state:%d\n",
