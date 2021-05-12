@@ -63,8 +63,8 @@ int main(int argc, char * argv[])
 		for( int i = 0 ; i < size ; i++ )
 		{
 			char processname[64];
-			int arrivtime 	= 0 + rand()%(10*1000);
-			int deadline	= size + rand()%(9*size);
+			int arrivtime 	= 1000 + rand()%(10000*1000);
+			int deadline	= size*1000 + rand()%(9000*size);
 			int bursttime 	= 1 + (deadline*(rand()%((expCPU-1)/5)))/(size*10);
 			sprintf(processname,"%c%c%c%c%04d", (65+rand()%26), (65+rand()%26), (65+rand()%26), (65+rand()%26), rand()%10000);
 			fprintf(file,"%s %d %d %d\n",processname, arrivtime, bursttime, deadline);
@@ -72,7 +72,7 @@ int main(int argc, char * argv[])
 			totaldead += deadline;
 			totalCPUutil += (float)bursttime/deadline;
 		}
-		printf("[total] WCET : %d, deadline : %d, CPU uitilization %d%\n", totalWCET, totaldead, (int)(totalCPUutil*100));
+		printf("[total] WCET : %d, average deadline : %d, CPU uitilization %d%\n", totalWCET, totaldead/size, (int)(totalCPUutil*100));
 		break;
 
 	}

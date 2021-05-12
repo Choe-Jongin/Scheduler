@@ -2,19 +2,21 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct task{
+#define TIMETYPE double
+
+typedef struct task_struct{
 
 	char name[128];
-	int arrivaltime;
-	int bursttime;
-	int deadline;
-	int remaintime;
-	int state; // -1: not yet inserted th run queue, 0: waiting, 1:running, 2:finished
+	TIMETYPE arrivaltime;
+	TIMETYPE bursttime;
+	TIMETYPE deadline;
+	TIMETYPE remaintime;
+	int state; // -1: not yet inserted the rq, 0: waiting, 1:running, 2:stoped, 3:finish
 
 }Process;
 
 //process 생성 
-Process * newProcess(char * name, int arr, int burst, int dead)
+Process * newProcess(char * name, TIMETYPE arr, TIMETYPE burst, TIMETYPE dead)
 {
 	Process * proc = (Process*)malloc(sizeof(Process));
 
@@ -29,19 +31,27 @@ Process * newProcess(char * name, int arr, int burst, int dead)
 }
 
 //process 도착 
-void run( Process * proc )
+void taskrun( Process * proc )
 {
 	proc->remaintime	= proc->bursttime;
 	proc->state			= 0;
 }
 
-//process 처리 return 0: remain, return 1: finish
-int update( Process * proc, int elapse )
+//process 처리, 소모한 시간을 돌려줌
+TIMETYPE taskupdate( Process * proc, TIMETYPE delta )
 {
 	proc->state = 1;
-	proc->remaintime -= elapse;
+	proc->remaintime -= delta;
 	if( proc->remaintime <= 0 )
 	{
-		proc->state = 2;
+		proc->state = 3;
+		return delta + proc->remaintime;
 	}
+	//모든 시간을 다 씀
+	return delta;
+}
+//process 중지
+void taskstop( Process * proc )
+{
+	proc->state = 2;
 }

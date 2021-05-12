@@ -3,6 +3,15 @@
 
 #define PRIORITY_ALGORITHM 1
 
+//priority policy	
+enum PrioriyPlicy{
+		FIFO,
+		RM,
+		EDF,
+		RR
+};
+
+
 //Node
 typedef struct element
 {
@@ -13,14 +22,14 @@ typedef struct element
 }Node;
 
 //알고리즘 별 우선순위 값을 찾아줌
-int getPriority( Process * proc,int type )
+int getPriority( Process * proc, int pp )
 {
 	if( proc == NULL )
 			return 0;
 
- 	switch( type )
+ 	switch( pp )
 	{
-	case 0:	//도착시간 순 
+	case 0:	//도착시간 순 (FIFO)
 		return proc->arrivaltime;
 	case 1:	//데드라인 적은 순(RM)
 		return proc->deadline;
@@ -36,7 +45,7 @@ Node * newNode(Process * proc, int pp)
 	newnode->prev 		= NULL;
 	newnode->next 		= NULL;
 	newnode->data 		= proc;
-	newnode->priority	= getPriority(proc, pp); // RM scheduling	
+	newnode->priority	= getPriority(proc, pp);	
 	return newnode;
 }
 
@@ -48,14 +57,14 @@ typedef struct runqueue
 	Node * head;
 	Node * tail;
 	int pp; // priority policy
-	Node * endnode; //더미노드
+	Node * endnode; //더미노드(항상 맨 뒤에 있음)
 }Queue;
 
 //새 큐
 Queue * newDefaultQueue()
 {
 	Queue * newq = (Queue*)malloc(sizeof(Queue));
-	newq->endnode = newNode(NULL, 0); //더미노드
+	newq->endnode = newNode(NULL, 0); //더미노드 초기화 
 	
 	newq->size = 0;
 	newq->head = newq->endnode;
@@ -121,6 +130,7 @@ void insertNode( Queue * queue, Node * node )
 
 	queue->size++;
 }
+//Process만으로 노드를 새로 만들어서 큐에 삽입
 void insertNewNode( Queue * queue, Process * proc )
 {
 	insertNode(queue, newNode(proc, queue->pp));
@@ -151,7 +161,7 @@ void printQueue( Queue * queue )
 	int index = 0;
 	for( Node * it = queue->head ; it != queue->endnode ; it = it->next )
 	{
-		printf("%03d. this:%p, prev:%p, next:%p\n", index++,it ,it->prev, it->next);
+		printf("%03d. prev:%p, this:%p, next:%p\n", index++,it->prev, it, it->next);
 	}
 }
 //모든 노드 내용 출력
@@ -162,6 +172,6 @@ void printNodeData( Queue * queue )
 	{
 		data = it -> data;
 		printf("[%s]arr:%d, burst:%d, deadline:%d, remain:%d, state:%d\n",
-			data->name, data->arrivaltime, data->bursttime, data->deadline, data->remaintime, data->state);
+			data->name, (int)data->arrivaltime, (int)data->bursttime,  (int)data->deadline,  (int)data->remaintime, data->state);
 	}
 }
