@@ -3,16 +3,16 @@
 #include <string.h>
 #include "tgui.h"
 
-#define MAX_MSG_SIZE 15
+#define MAX_MSG_SIZE 20
 #define MAX_MSG_WIDTH 40
 #define SHOW_MSG_TIME 1*1000*1000 //메세지를 보여줄 기간
 
 typedef struct message
 {
-	char msgstr[MAX_MSG_SIZE][MAX_MSG_WIDTH*4];
+	char msgstr[MAX_MSG_SIZE][MAX_MSG_WIDTH*CHSIZE];
 	TIMETYPE duration[MAX_MSG_SIZE];
 	int size;
-	char str[MAX_MSG_WIDTH*4];
+	char str[MAX_MSG_WIDTH*CHSIZE];
 }MSG;
 
 MSG * msg = NULL;

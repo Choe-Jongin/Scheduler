@@ -9,6 +9,12 @@
 #define HEIGHT 30
 #define WIDTH 160
 
+#define LIST_Y 8
+#define LIST_SIZE 20
+#define TASK_LIST_X 5
+#define RUNQ_X 40
+#define MESSAGE_X 110
+
 #define FIFO	0
 #define RM 		1
 
@@ -77,6 +83,7 @@ int main(int argc, char *argv[] )
 
 	int isrunning = 1;			//메인루프 동작 여부 결정
 	double schedulerTime = 0.0;	//스케줄러의 시간 0~끝날때까지 ms단위
+	double termicountdown = 1.5*1000.0*1000.0;	//처리 후 메인루프가 끝나기 까지
 
 	//시간 측정을 위한 변수들
 	struct timeval elap, curr;
@@ -91,22 +98,49 @@ int main(int argc, char *argv[] )
 	FILE * logfile = fopen("log.txt","w");
 
 	cls();
+	invalidRect(tgui,0,0,WIDTH,HEIGHT);		
 	//main loop
-	while(isrunning)
+	while(termicountdown > 0.0)
 	{
 		//흐른 시간 확인 
    	 	gettimeofday(&curr, NULL);
 		delta = (curr.tv_sec + curr.tv_usec / 1000000.0 - elap.tv_sec - elap.tv_usec / 1000000.0)*1000000;
 		schedulerTime += delta;
-		invalidRect(tgui,0,0,WIDTH,HEIGHT);
+		
+		//백 버퍼 초기화
+		invalidRect(tgui,3,3,WIDTH,HEIGHT-1);		
+		sprintf(tgui->str,"┌%s┐", strHorLine(WIDTH));
+		draw(tgui,0,0,tgui->str);
+		sprintf(tgui->str,"%s", matchformat(WIDTH,"  TEAM 8 SCHEDULER"));
+		draw(tgui,0,1,tgui->str);
+		sprintf(tgui->str,"├%s┤", strHorLine(WIDTH));
+		draw(tgui,0,2,tgui->str);
+		for( int i = 3 ; i < 6 ; i++ )
+			draw(tgui, 0, i, matchformat(WIDTH," "));
+		sprintf(tgui->str,"├%s┤", strHorLine(WIDTH));
+		draw(tgui,0,6,tgui->str);
+		for( int i = 7 ; i < HEIGHT-1 ; i++ )
+		{
+	//		draw(tgui, 0, i, matchformat(WIDTH," "));
+			draw(tgui, 0, i, "│");
+			draw(tgui, RUNQ_X, i, "│");
+			draw(tgui, MESSAGE_X, i, "│");
+			draw(tgui, WIDTH, i, "     │");
+		}
+		sprintf(tgui->str,"└%s┘", strHorLine(WIDTH));
+		draw(tgui,0,HEIGHT-1,tgui->str);
+
 		/***********************실직적인 메인************************/
 
 		//실행 정보 표시
+		sprintf(tgui->str,"<SCEHDULER STATUS>");
+		draw(tgui, 5, 3, tgui->str);
 		sprintf(tgui->str,"scheduler excution time : %dms, tick %.3f", (int)schedulerTime/1000, delta);
-		draw(tgui, 0, 0, tgui->str);
-		sprintf(tgui->str,"task list %d,  Run Queue %d", g_tasklist->size, rq->size);
-		draw(tgui, 0, 1, tgui->str);
-
+		draw(tgui, 5, 4, tgui->str);
+//		sprintf(tgui->str,"task list %d,  Run Queue %d", g_tasklist->size, rq->size);
+//		draw(tgui, 5, 5, tgui->str);
+		
+		
 		//task 도착확인 
 		while(g_tasklist->head != g_tasklist->endnode)
 		{
@@ -166,7 +200,7 @@ int main(int argc, char *argv[] )
 			if( proc->state != TASK_FINISH ){
 				sprintf(tgui->str,"[%dms] %s spend %.3fus, remain Execution Time is %.3f", 
 							(int)schedulerTime/1000, proc->name, tempremain, proc->remaintime);
-				draw(tgui, 0, 2, tgui->str);
+				draw(tgui, 5, 5, tgui->str);
 				insertNode(rq,currnode);
 			}
 			else{
@@ -179,38 +213,54 @@ int main(int argc, char *argv[] )
 			}
 		}
 
-		if( rq->size == 0 && g_tasklist->size == 0 )
+		if( rq->size == 0 && g_tasklist->size == 0 && isrunning == 1)
 		{
-			insertStrMSG("All task is done\n");
+			sprintf(msg->str,"[%dms] All tasks completed", (int)schedulerTime/1000);
+			insertMSG();
 			isrunning = 0;
 		}
+		
+		//Task list 출력
+		sprintf(tgui->str,"TASK LIST : %d", g_tasklist->size);
+		draw(tgui,TASK_LIST_X, LIST_Y-1, tgui->str);
+		int taski = 0;
+		for( Node * it = g_tasklist->head ; it != g_tasklist->endnode && taski < LIST_SIZE; it = it->next )		
+		{
+			sprintf(tgui->str,"%s arrival:%d", it->data->name, (int)it->data->arrivaltime);
+			draw(tgui,TASK_LIST_X, LIST_Y+taski, tgui->str);
+			taski++;
+		}
+		if( taski == LIST_SIZE )
+			draw(tgui,TASK_LIST_X, LIST_Y+taski, "MORE...");
+		
+		//Run Queue 출력
+		sprintf(tgui->str,"RUN QUEUE : %d", rq->size);
+		draw(tgui,RUNQ_X + 5, LIST_Y-1, tgui->str);
+		int rqi = 0;
+		for( Node * it = rq->head ; it != rq->endnode && rqi < LIST_SIZE; it = it->next )		
+		{
+			sprintf(tgui->str,"%s arrival : %d deadline : %d", it->data->name, (int)it->data->arrivaltime, (int)it->data->deadline);
+			draw(tgui,RUNQ_X+5, LIST_Y+rqi, tgui->str);
+			rqi++;
+		}
+		if( rqi == LIST_SIZE )
+			draw(tgui,RUNQ_X+5, LIST_Y+rqi, "MORE...");
 
 		//메세지 출력
 		MSGUpdate(delta);	//MSG 최신화
-		sprintf(tgui->str,"┌%s┐", strHorLine(MAX_MSG_WIDTH));
-		draw(tgui,40,5,tgui->str);
-		sprintf(tgui->str,"%s", matchformat(MAX_MSG_WIDTH,"<MESSAGE>"));
-		draw(tgui,40,6,tgui->str);
+		draw(tgui,MESSAGE_X+5, LIST_Y-1, "MESSAGE:");
 		for( int i = 0 ; i < msg->size ; i++ )
-		{
-			sprintf(tgui->str,"%s ", matchformat(MAX_MSG_WIDTH,msg->msgstr[i]));
-			draw(tgui,40,7+i,tgui->str);
-		}
-        sprintf(tgui->str,"└%s┘ ", strHorLine(MAX_MSG_WIDTH));
-		draw(tgui,40,7+msg->size,tgui->str);
-	
+			draw(tgui,MESSAGE_X+5, LIST_Y+i, msg->msgstr[i]);
+
+
+		//끝났으면 카운트 다운 시작
+		if( isrunning == 0 )
+			termicountdown -= delta;
 		
 		/**************************메인 끝***************************/
 		showBackBuff(tgui);
 		elap = curr;
 	}
-
-	//실행 정보 표시
-	sprintf(tgui->str,"scheduler excution time : %dms, tick %.3f", (int)schedulerTime/1000, delta);
-	draw(tgui, 0, 0, tgui->str);
-	sprintf(tgui->str,"task list %d,  Run Queue %d", g_tasklist->size, rq->size);
-	draw(tgui, 0, 1, tgui->str);
-	showBackBuff(tgui);
 
 	//메모리 헤제
 	fclose(logfile);

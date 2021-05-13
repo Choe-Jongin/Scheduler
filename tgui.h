@@ -20,11 +20,11 @@ TGUI * newTGUI(int height, int width)
 
 	newtgui->texel = (char**)malloc(sizeof(char*)*height);
 	for( int i = 0 ; i < height ; i++ ){		
-		newtgui->texel[i] = (char*)malloc(sizeof(char)*(width+1));
-		newtgui->texel[i][width] = '\0';
+		newtgui->texel[i] = (char*)malloc(sizeof(char)*(width*CHSIZE+1));
+		newtgui->texel[i][width*CHSIZE] = '\0';
 	}
-	//newtgui->texel[height-1][width] = '\0';
-	newtgui->str = (char*)malloc(sizeof(char)*(width+1));
+//	newtgui->texel[height-1][width*CHSIZE] = '\0';
+	newtgui->str = (char*)malloc(sizeof(char)*(width*CHSIZE+1));
 
 	return newtgui;
 }
@@ -33,8 +33,8 @@ void invalidRect(TGUI * tgui, int l, int t, int r, int b)
 {
 	if( t < 0 ) t = 0;
 	if( l < 0 ) l = 0;
-	if( b > tgui->height ) b = tgui->height;
-	if( r > tgui->width ) r = tgui->width;
+	if( b > tgui->height*CHSIZE ) b = tgui->height*CHSIZE;
+	if( r > tgui->width*CHSIZE ) r = tgui->width*CHSIZE;
 	for( int row = t ; row < b ; row++)			
 		for( int col = l ; col < r; col++)
 				tgui->texel[row][col] = ' ';
@@ -51,9 +51,10 @@ void gotoxy (short row, short col)
 void draw(TGUI * tgui, int x, int y, char * str)
 {
 	int len = strlen(str);
-	int index = 0;
 	for( int i = x ; i < len+x ; i++ )
-			tgui->texel[y+i/tgui->width][i%tgui->width] = str[i-x];
+		if( str[i-x] != '\0')
+			tgui->texel[y][i] = str[i-x];
+//			tgui->texel[y+i/(tgui->width*CHSIZE)][i%(tgui->width*CHSIZE)] = str[i-x];
 
 }
 void showBackBuff(TGUI * tgui)
@@ -62,6 +63,7 @@ void showBackBuff(TGUI * tgui)
 	gotoxy(0,0);
 	for( int r = 0 ; r < tgui->height ; r++)
 		printf("%s\n",tgui->texel[r]);
+
 }
 
 void destroyTgui(TGUI * tgui)
