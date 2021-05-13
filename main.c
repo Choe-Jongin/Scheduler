@@ -118,15 +118,16 @@ int main(int argc, char *argv[] )
 				int index = insertNode(rq, node);
 				sprintf(msg->str,"[%dms] %s arrive", (int)schedulerTime/1000, node->data->name);
 				insertMSG();
-				
+				fprintf(logfile,"%09d %s %d %d\n", (int)schedulerTime, node->data->name, (int)node->data->arrivaltime, LOG_ARRIV);
+
 				//우선순위가 가장 높은게 추가 되었을 경우
 				if( index == 0 )
 				{
 					//기존의 최우선 노드가 있고 그것이 처리중이였으면
-					if( node->next != rq->endnode && node->next->data->state == 1)
+					if( node->next != rq->endnode && node->next->data->state == TASK_RUN)
 					{ 	
 						//상태를 스톱으로 바꿈
-						node->next->data->state = 2;
+						node->next->data->state = TASK_STOP;
 						fprintf(logfile,"%09d %s %d %d\n", (int)schedulerTime, node->next->data->name, (int)node->data->realdeadline, LOG_STOP);
 						sprintf(msg->str,"[%dms] %s is stop", (int)schedulerTime/1000, node->next->data->name);
 						insertMSG();
@@ -144,7 +145,7 @@ int main(int argc, char *argv[] )
 			currnode = popQueue(rq);
 			Process * proc = currnode->data;
 			//wait이였으면(즉 처음으로 처리단계에 들어왔으면)
-			if( proc->state == 0 )
+			if( proc->state == TASK_WAIT )
 			{
 
 				sprintf(msg->str,"[%dms] %s start processing", (int)schedulerTime/1000, proc->name);
@@ -152,7 +153,7 @@ int main(int argc, char *argv[] )
 				fprintf(logfile,"%09d %s %d %d\n", (int)schedulerTime, proc->name, (int)proc->realdeadline, LOG_START);
 			}
 			//STOP상태였으면
-			else if( proc->state == 2 )
+			else if( proc->state == TASK_STOP )
 			{
 				sprintf(msg->str,"[%dms] %s continue processing", (int)schedulerTime/1000, proc->name);
 				insertMSG();
@@ -162,7 +163,7 @@ int main(int argc, char *argv[] )
 			proc->state = 1;
 			TIMETYPE tempremain = remaindelta;
 			remaindelta = remaindelta - taskupdate(proc, remaindelta);
-			if( proc->state != 3 ){
+			if( proc->state != TASK_FINISH ){
 				sprintf(tgui->str,"[%dms] %s spend %.3fus, remain Execution Time is %.3f", 
 							(int)schedulerTime/1000, proc->name, tempremain, proc->remaintime);
 				draw(tgui, 0, 2, tgui->str);

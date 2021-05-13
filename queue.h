@@ -84,6 +84,7 @@ Queue * newQueue(int pp)
 //큐에 삽입하고 몇 번째에 삽입 했는지 반환
 int insertNode( Queue * queue, Node * node )
 {
+	node->priority = getPriority(node->data, queue->pp);
 	int index = 0;
 	//큐가 비었으면 
 	if( queue->head == queue->endnode )

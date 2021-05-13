@@ -4,6 +4,12 @@
 
 #define TIMETYPE double
 
+#define TASK_LOAD	-1
+#define TASK_WAIT	0
+#define TASK_RUN	1
+#define TASK_STOP	2
+#define TASK_FINISH	3
+
 typedef struct task_struct{
 
 	char name[128];
@@ -27,7 +33,7 @@ Process * newProcess(char * name, TIMETYPE arr, TIMETYPE burst, TIMETYPE dead)
 	proc->deadline		= dead;
 	proc->realdeadline	= arr + dead;
 	proc->remaintime	= burst;
-	proc->state			= -1;
+	proc->state			= TASK_LOAD;
 
 	return proc;
 }
