@@ -13,7 +13,7 @@
 #define LIST_SIZE 20
 #define TASK_LIST_X 5
 #define RUNQ_X 40
-#define MESSAGE_X 110
+#define MESSAGE_X 115
 
 #define FIFO	0
 #define RM 		1
@@ -83,7 +83,7 @@ int main(int argc, char *argv[] )
 
 	int isrunning = 1;			//메인루프 동작 여부 결정
 	double schedulerTime = 0.0;	//스케줄러의 시간 0~끝날때까지 ms단위
-	double termicountdown = 1.5*1000.0*1000.0;	//처리 후 메인루프가 끝나기 까지
+	double termicountdown = 3*1000.0*1000.0;	//처리 후 메인루프가 끝나기 까지
 
 	//시간 측정을 위한 변수들
 	struct timeval elap, curr;
@@ -97,6 +97,9 @@ int main(int argc, char *argv[] )
 	//결과 로그 파일 
 	FILE * logfile = fopen("log.txt","w");
 
+	char * horline = strHorLine(WIDTH); 
+	char * title = matchformat(WIDTH,"  TEAM 8 SCHEDULER"); 
+
 	cls();
 	invalidRect(tgui,0,0,WIDTH,HEIGHT);		
 	//main loop
@@ -109,15 +112,15 @@ int main(int argc, char *argv[] )
 		
 		//백 버퍼 초기화
 		invalidRect(tgui,3,3,WIDTH,HEIGHT-1);		
-		sprintf(tgui->str,"┌%s┐", strHorLine(WIDTH));
+		sprintf(tgui->str,"┌%s┐", horline);
 		draw(tgui,0,0,tgui->str);
-		sprintf(tgui->str,"%s", matchformat(WIDTH,"  TEAM 8 SCHEDULER"));
+		sprintf(tgui->str,"%s", title);
 		draw(tgui,0,1,tgui->str);
-		sprintf(tgui->str,"├%s┤", strHorLine(WIDTH));
+		sprintf(tgui->str,"├%s┤", horline);
 		draw(tgui,0,2,tgui->str);
 		for( int i = 3 ; i < 6 ; i++ )
 			draw(tgui, 0, i, matchformat(WIDTH," "));
-		sprintf(tgui->str,"├%s┤", strHorLine(WIDTH));
+		sprintf(tgui->str,"├%s┤", horline);
 		draw(tgui,0,6,tgui->str);
 		for( int i = 7 ; i < HEIGHT-1 ; i++ )
 		{
@@ -127,7 +130,7 @@ int main(int argc, char *argv[] )
 			draw(tgui, MESSAGE_X, i, "│");
 			draw(tgui, WIDTH, i, "     │");
 		}
-		sprintf(tgui->str,"└%s┘", strHorLine(WIDTH));
+		sprintf(tgui->str,"└%s┘", horline);
 		draw(tgui,0,HEIGHT-1,tgui->str);
 
 		/***********************실직적인 메인************************/
@@ -230,7 +233,7 @@ int main(int argc, char *argv[] )
 			draw(tgui,TASK_LIST_X, LIST_Y+taski, tgui->str);
 			taski++;
 		}
-		if( taski == LIST_SIZE )
+		if( g_tasklist->size > LIST_SIZE )
 			draw(tgui,TASK_LIST_X, LIST_Y+taski, "MORE...");
 		
 		//Run Queue 출력
@@ -239,11 +242,12 @@ int main(int argc, char *argv[] )
 		int rqi = 0;
 		for( Node * it = rq->head ; it != rq->endnode && rqi < LIST_SIZE; it = it->next )		
 		{
-			sprintf(tgui->str,"%s arrival : %d deadline : %d", it->data->name, (int)it->data->arrivaltime, (int)it->data->deadline);
+			sprintf(tgui->str,"%s arrival : %d, burst : %d , deadline : %d",
+							it->data->name, (int)it->data->arrivaltime, (int)it->data->bursttime, (int)it->data->deadline);
 			draw(tgui,RUNQ_X+5, LIST_Y+rqi, tgui->str);
 			rqi++;
 		}
-		if( rqi == LIST_SIZE )
+		if( rq->size > LIST_SIZE )
 			draw(tgui,RUNQ_X+5, LIST_Y+rqi, "MORE...");
 
 		//메세지 출력
@@ -263,6 +267,9 @@ int main(int argc, char *argv[] )
 	}
 
 	//메모리 헤제
+	free(horline);
+	free(title);
+	
 	fclose(logfile);
 	destroyTgui(tgui);
 	destroyQueue(g_tasklist);

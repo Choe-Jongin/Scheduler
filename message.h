@@ -5,7 +5,7 @@
 
 #define MAX_MSG_SIZE 20
 #define MAX_MSG_WIDTH 40
-#define SHOW_MSG_TIME 1*1000*1000 //메세지를 보여줄 기간
+#define SHOW_MSG_TIME 3*1000*1000 //메세지를 보여줄 기간
 
 typedef struct message
 {
