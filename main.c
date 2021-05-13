@@ -3,11 +3,11 @@
 #include <sys/time.h>
 #include "queue.h"
 #include "message.h"
+#include "log.h"
 
 #define READ_BUFF_SIZE 256
 #define HEIGHT 30
-#define WIDTH 120
-#define CHSIZE 4  	//특수문자 바이트 수
+#define WIDTH 160
 
 #define FIFO	0
 #define RM 		1
@@ -85,9 +85,12 @@ int main(int argc, char *argv[] )
 	
 	//태스트 목록 읽기 및 정보 확인
 	fileread("process.txt");	
-	
 	printf("scheduler start\n");
 	
+	//결과 로그 파일 
+	FILE * logfile = fopen("log.txt","w");
+
+	cls();
 	//main loop
 	while(isrunning)
 	{
@@ -112,9 +115,23 @@ int main(int argc, char *argv[] )
 			{
 				Node * node = popQueue(g_tasklist);
 				taskrun(node->data); // -> wating
-				insertNode(rq, node);
-				sprintf(msg->str,"[%dms] %s arrival", (int)schedulerTime/1000, node->data->name);
+				int index = insertNode(rq, node);
+				sprintf(msg->str,"[%dms] %s arrive", (int)schedulerTime/1000, node->data->name);
 				insertMSG();
+				
+				//우선순위가 가장 높은게 추가 되었을 경우
+				if( index == 0 )
+				{
+					//기존의 최우선 노드가 있고 그것이 처리중이였으면
+					if( node->next != rq->endnode && node->next->data->state == 1)
+					{ 	
+						//상태를 스톱으로 바꿈
+						node->next->data->state = 2;
+						fprintf(logfile,"%09d %s %d %d\n", (int)schedulerTime, node->next->data->name, (int)node->data->realdeadline, LOG_STOP);
+						sprintf(msg->str,"[%dms] %s is stop", (int)schedulerTime/1000, node->next->data->name);
+						insertMSG();
+					}
+				}
 			}else break;
 		}
 		
@@ -126,17 +143,35 @@ int main(int argc, char *argv[] )
 		{
 			currnode = popQueue(rq);
 			Process * proc = currnode->data;
+			//wait이였으면(즉 처음으로 처리단계에 들어왔으면)
+			if( proc->state == 0 )
+			{
+
+				sprintf(msg->str,"[%dms] %s start processing", (int)schedulerTime/1000, proc->name);
+				insertMSG();
+				fprintf(logfile,"%09d %s %d %d\n", (int)schedulerTime, proc->name, (int)proc->realdeadline, LOG_START);
+			}
+			//STOP상태였으면
+			else if( proc->state == 2 )
+			{
+				sprintf(msg->str,"[%dms] %s continue processing", (int)schedulerTime/1000, proc->name);
+				insertMSG();
+				fprintf(logfile,"%09d %s %d %d\n", (int)schedulerTime, proc->name, (int)proc->realdeadline, LOG_CONT);
+			}
+			
+			proc->state = 1;
 			TIMETYPE tempremain = remaindelta;
 			remaindelta = remaindelta - taskupdate(proc, remaindelta);
 			if( proc->state != 3 ){
 				sprintf(tgui->str,"[%dms] %s spend %.3fus, remain Execution Time is %.3f", 
-								(int)schedulerTime/1000, proc->name, tempremain, proc->remaintime);
+							(int)schedulerTime/1000, proc->name, tempremain, proc->remaintime);
 				draw(tgui, 0, 2, tgui->str);
 				insertNode(rq,currnode);
 			}
 			else{
 				sprintf(msg->str,"[%dms] %s finish", (int)schedulerTime/1000, proc->name);
 				insertMSG();
+				fprintf(logfile,"%09d %s %d %d\n", (int)schedulerTime, proc->name, (int)proc->realdeadline, LOG_FINISH);
 
 				free(currnode->data);
 				free(currnode);
@@ -152,18 +187,16 @@ int main(int argc, char *argv[] )
 		//메세지 출력
 		MSGUpdate(delta);	//MSG 최신화
 		sprintf(tgui->str,"┌%s┐", strHorLine(MAX_MSG_WIDTH));
-		draw(tgui,0,5,tgui->str);
+		draw(tgui,40,5,tgui->str);
 		sprintf(tgui->str,"%s", matchformat(MAX_MSG_WIDTH,"<MESSAGE>"));
-		draw(tgui,0,6,tgui->str);
+		draw(tgui,40,6,tgui->str);
 		for( int i = 0 ; i < msg->size ; i++ )
 		{
 			sprintf(tgui->str,"%s ", matchformat(MAX_MSG_WIDTH,msg->msgstr[i]));
-			draw(tgui,0,7+i,tgui->str);
+			draw(tgui,40,7+i,tgui->str);
 		}
         sprintf(tgui->str,"└%s┘ ", strHorLine(MAX_MSG_WIDTH));
-		draw(tgui,0,7+msg->size,tgui->str);
-
-
+		draw(tgui,40,7+msg->size,tgui->str);
 	
 		
 		/**************************메인 끝***************************/
@@ -178,6 +211,8 @@ int main(int argc, char *argv[] )
 	draw(tgui, 0, 1, tgui->str);
 	showBackBuff(tgui);
 
+	//메모리 헤제
+	fclose(logfile);
 	destroyTgui(tgui);
 	destroyQueue(g_tasklist);
 	destroyQueue(rq);

@@ -32,7 +32,7 @@ int getPriority( Process * proc, int pp )
 	case 0:	//도착시간 순 (FIFO)
 		return proc->arrivaltime;
 	case 1:	//데드라인 적은 순(RM)
-		return proc->deadline;
+		return (int)proc->deadline;
 	}
 
 	return 0;
@@ -81,15 +81,17 @@ Queue * newQueue(int pp)
 	return newq;
 }
 
-//큐에 삽입
-void insertNode( Queue * queue, Node * node )
+//큐에 삽입하고 몇 번째에 삽입 했는지 반환
+int insertNode( Queue * queue, Node * node )
 {
+	int index = 0;
 	//큐가 비었으면 
 	if( queue->head == queue->endnode )
 	{
 		queue->head = node;
 		queue->head->next = queue->tail;
 		queue->tail->prev = queue->head;
+		index = 0;
 	}
 	//새로 들어온 노드가 제일 우선 순위가 높으면
 	else if( node->priority <= queue->head->priority )
@@ -97,6 +99,7 @@ void insertNode( Queue * queue, Node * node )
 		node->next = queue->head;
 		queue->head->prev = node;
 		queue->head = node;
+		index == 0;
 	}
 	//큐가 비어있지 않으면
 	else
@@ -105,6 +108,7 @@ void insertNode( Queue * queue, Node * node )
 		Node * it = queue->head;
 		for( it = queue->head ; it != queue->endnode ; it = it->next )
 		{
+			index++;
 			//순차 탐색 중 새 노드보다 우선순위가 낮은 기존의 노드 발견시
 			if( node->priority < it->priority )
 			{
@@ -124,16 +128,18 @@ void insertNode( Queue * queue, Node * node )
 			node->prev = it;
 			node->next = queue->tail;
 			queue->tail->prev = node;
+			index++;
 		}
 			
 	}
 
 	queue->size++;
+	return index;
 }
 //Process만으로 노드를 새로 만들어서 큐에 삽입
-void insertNewNode( Queue * queue, Process * proc )
+int insertNewNode( Queue * queue, Process * proc )
 {
-	insertNode(queue, newNode(proc, queue->pp));
+	return insertNode(queue, newNode(proc, queue->pp));
 }
 
 //큐에서 맨 앞 노드 추출(삭제)

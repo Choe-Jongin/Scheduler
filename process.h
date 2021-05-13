@@ -10,6 +10,7 @@ typedef struct task_struct{
 	TIMETYPE arrivaltime;
 	TIMETYPE bursttime;
 	TIMETYPE deadline;
+	TIMETYPE realdeadline;
 	TIMETYPE remaintime;
 	int state; // -1: not yet inserted the rq, 0: waiting, 1:running, 2:stoped, 3:finish
 
@@ -24,6 +25,7 @@ Process * newProcess(char * name, TIMETYPE arr, TIMETYPE burst, TIMETYPE dead)
 	proc->arrivaltime 	= arr;
 	proc->bursttime 	= burst;
 	proc->deadline		= dead;
+	proc->realdeadline	= arr + dead;
 	proc->remaintime	= burst;
 	proc->state			= -1;
 

@@ -1,6 +1,8 @@
 #pragma once
 #include <string.h>
 
+#define CHSIZE 3 //특수문자 바이트 수
+
 //TGUI 정보를 담는 구조체
 typedef struct TGUI_{
 	int height;
@@ -53,11 +55,10 @@ void draw(TGUI * tgui, int x, int y, char * str)
 	for( int i = x ; i < len+x ; i++ )
 			tgui->texel[y+i/tgui->width][i%tgui->width] = str[i-x];
 
-
 }
 void showBackBuff(TGUI * tgui)
 {
-	cls();
+//	cls();
 	gotoxy(0,0);
 	for( int r = 0 ; r < tgui->height ; r++)
 		printf("%s\n",tgui->texel[r]);
