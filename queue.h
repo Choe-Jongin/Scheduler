@@ -1,24 +1,13 @@
 #pragma once
 #include "process.h"
 
-#define PRIORITY_ALGORITHM 1
-
-//priority policy	
-enum PrioriyPlicy{
-		FIFO,
-		RM,
-		EDF,
-		RR
-};
-
-
-//Node
+//Node, 연결리스트 방식의 노드임
 typedef struct element
 {
 	struct element * prev;
 	struct element * next;
 	Process * data;
-	int priority;
+	int priority;			//노드의 우선순위, 오름차순 이기에 수치가 낮을 수록 우선순위가 높음
 }Node;
 
 //알고리즘 별 우선순위 값을 찾아줌
@@ -50,13 +39,13 @@ Node * newNode(Process * proc, int pp)
 }
 
 
-//Queue
+//Queue, 연결 리스트 방식의 큐임(실제 리눅스에선 RB트리를 사용한다고 함)
 typedef struct runqueue
 {
 	int size;
 	Node * head;
 	Node * tail;
-	int pp; // priority policy
+	int pp; // priority policy 우선순위 정책임
 	Node * endnode; //더미노드(항상 맨 뒤에 있음)
 }Queue;
 
@@ -67,12 +56,13 @@ Queue * newDefaultQueue()
 	newq->endnode = newNode(NULL, 0); //더미노드 초기화 
 	
 	newq->size = 0;
-	newq->head = newq->endnode;
-	newq->tail = newq->endnode;
-	newq->pp = 0;
+	newq->head = newq->endnode;		//아무것도 없을 땡 더미노드가 헤드임
+	newq->tail = newq->endnode;		//더미노드는 항상 꼬리임
+	newq->pp = 0;					//기본적으론 선입선출(FIFO)임 
 
 	return newq;
 }
+//우선 순위를 가지고 새 큐를 만들고 싶을 때
 Queue * newQueue(int pp)
 {
 	Queue * newq = newDefaultQueue();
@@ -84,9 +74,13 @@ Queue * newQueue(int pp)
 //큐에 삽입하고 몇 번째에 삽입 했는지 반환
 int insertNode( Queue * queue, Node * node )
 {
+	//큐 알고리즘의 맞게 노드의 우선순위를 다시 설정함
 	node->priority = getPriority(node->data, queue->pp);
+
+	//몇번째 노드인지 새는 변수
 	int index = 0;
-	//큐가 비었으면 
+	
+	//큐가 비었으면 헤드에 넣음
 	if( queue->head == queue->endnode )
 	{
 		queue->head = node;
@@ -94,7 +88,7 @@ int insertNode( Queue * queue, Node * node )
 		queue->tail->prev = queue->head;
 		index = 0;
 	}
-	//새로 들어온 노드가 제일 우선 순위가 높으면
+	//새로 들어온 노드가 제일 우선 순위가 높으면 헤드에 넣음
 	else if( node->priority <= queue->head->priority )
 	{
 		node->next = queue->head;
@@ -160,6 +154,21 @@ Node * popQueue( Queue * queue)
 
 	return tempnode;
 }
+
+//소멸자
+void destroyQueue(Queue * queue)
+{	
+	while( queue->head != queue->endnode )
+	{
+		Node * node = popQueue(queue);
+		free(node->data);
+		free(node);
+	}
+}
+
+
+
+//개발 단계 디버깅용 이젠 쓸 순 없지만 혹시 몰라서 남겨 둠
 //모든 노드 출력 
 void printQueue( Queue * queue )
 {
@@ -183,12 +192,3 @@ void printNodeData( Queue * queue )
 	}
 }
 
-void destroyQueue(Queue * queue)
-{	
-	while( queue->head != queue->endnode )
-	{
-		Node * node = popQueue(queue);
-		free(node->data);
-		free(node);
-	}
-}
