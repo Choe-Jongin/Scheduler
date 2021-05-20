@@ -84,6 +84,14 @@ Queue * newQueue(int pp)
 	return newq;
 }
 
+//해당 큐가 선점형인지 비 선점형인지 반환 0:비선점, 1:선점
+int isPreemptive(Queue * queue)
+{
+	if( queue->pp == RM || queue->pp == EDF)
+		return 1;
+	return 0;
+}
+
 //큐에 삽입하고 몇 번째에 삽입 했는지 반환
 int insertNode( Queue * queue, Node * node )
 {
@@ -101,8 +109,8 @@ int insertNode( Queue * queue, Node * node )
 		queue->tail->prev = queue->head;
 		index == 0;
 	}
-	//새로 들어온 노드가 제일 우선 순위가 높으면 헤드에 넣음
-	else if( node->priority <= queue->head->priority )
+	//새로 들어온 노드가 제일 우선 순위가 높으면 헤드에 넣음(선점형이거나 헤처리도중이 아닐때만, 즉 비선점형이면 헤드가 RUN이 아닐때만)
+	else if( node->priority <= queue->head->priority && ( isPreemptive(queue) == 1 || queue->head->data->state != TASK_RUN ) ) 
 	{
 		node->next = queue->head;
 		queue->head->prev = node;
@@ -117,8 +125,8 @@ int insertNode( Queue * queue, Node * node )
 		for( it = queue->head ; it != queue->endnode ; it = it->next )
 		{
 			index++;
-			//순차 탐색 중 새 노드보다 우선순위가 낮은 기존의 노드 발견시
-			if( node->priority < it->priority )
+			//순차 탐색 중 새 노드보다 우선순위가 낮은 기존의 노드 발견시(선점형이거나 태스크가 처리중이 아닐때만)
+			if( node->priority < it->priority && ( isPreemptive(queue) == 1 || it->data->state != TASK_RUN ) )
 			{
 				//기존 노드 앞에 삽입 함
 				node -> prev = it->prev;
