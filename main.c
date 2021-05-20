@@ -1,90 +1,26 @@
-#include <stdio.h>
-#include <time.h>
-#include <sys/time.h>
-#include "queue.h"
-#include "message.h"
-#include "Gantt/log.h"
-
-//주기적으로 도착하는 태스크를 상정하고 태스크 제네레터를 만들어서 burst시간이 짧음
-//그래서 파일을 읽을때 몇 배를 크게 읽어드리기 위해 존재하는 상수
-#define EX_BURST 50
-
-#define READ_BUFF_SIZE 256		//파일 읽기 시 한 줄에 몇 글자를 읽는지
-#define HEIGHT	30				//최대 높이		LIST_Y + LIST_SIZE + 1 보단 커야 함
-#define WIDTH	145				//최대 넓이
-
-#define LIST_Y 8				//큐, 메세지 목록이 시작될 y위치
-#define LIST_SIZE 20			//큐, 메세지 등의 최대 표시 갯수
-#define TASK_LIST_X 5			//g_tasklist의 노드 표시 x위치
-#define RUNQ_X 33				//rq의 노드 표시 x위치
-#define MESSAGE_X 105			//메세지의 표시 x위치
-
-//알고리즘 번호
-#define FIFO	0				
-#define RM		1
-
-Queue * g_tasklist;	//모든 프로세서의 목록(아직 스케줄링 큐에 올라가진 않음)
-TGUI * tgui;		//텍스트만으로 GUI처럼 화면에 표시하기 위한 구조체
-
-//파일 읽기
-void fileread(char * filename)
-{
-	//도착시간순으로 정렬
-	g_tasklist = newQueue(FIFO);
-
-	//file read
-	FILE * file = fopen(filename,"r");
-    while (feof(file) == 0) {
-        char str[READ_BUFF_SIZE];
-        fgets(str, READ_BUFF_SIZE, file);
-    	char name[64];
-		int arr, burst, dead;
-		fscanf(file, "%s %d %d %d",name, &arr, &burst, &dead);
-		insertNewNode(g_tasklist, newProcess(name,(double)arr,(double)burst*EX_BURST,(double)dead));
-	}
-	fclose(file);
-}
-// │ {str} blank │ 형태로 문자열 양쪽 끝에 수직선을 하나 넣어줌(중요하지 않음)
-char *matchformat(int w, char *str)
-{
-	int len = strlen(str);
-    if (len > w - 2)
-        return str;
-	
-	for( int i = 0 ; i < len ; i++ )
-		if( str[i] == '\n' || str[i] == '\r' )
-			str[i] = ' ';
-
-    char *matchedstr = (char *)malloc(w * CHSIZE + 1);
-    memset(matchedstr, 0, w * CHSIZE + 1);
-
-    strcat(matchedstr, "│");
-    strcat(matchedstr, str);
-
-    for (int i = 0; i < w - len - 2; i++)
-    {
-        strcat(matchedstr, " ");
-    }
-
-    strcat(matchedstr, "│");
-    return matchedstr;
-}
-//w-2만큼 수평선을 만들어서 반환(중요하지 않음)
-char *strHorLine(int w)
-{
-    char *line = (char *)malloc(w * CHSIZE + 1);
-    memset(line, 0, w * CHSIZE);
-
-    for (int i = 0; i < w - 2; i++)
-        strcat(line, "─");
-
-    return line;
-}
+#include "main.h"
 
 int main(int argc, char *argv[] )
 {
+	
+	//스케줄링 알고리즘
+	int pp = RM;
+	if( argc > 1 )
+	{
+		if( strcmp(argv[1], "FIFO") == 0 || strcmp(argv[1], "FCFS") == 0 )
+			pp = FIFO;
+		if( strcmp(argv[1], "SJF") == 0 )
+			pp = SJF;
+		if( strcmp(argv[1], "PRIO") == 0 || strcmp(argv[1], "priority") == 0)
+			pp = PRIO;
+		if( strcmp(argv[1], "RM") == 0 )
+			pp = RM;
+		if( strcmp(argv[1], "EDF") == 0 )
+			pp = EDF;
+	}
+
 	//Run Queue 생성(RM 알고리즘)
-	Queue * rq = newQueue(RM);
+	Queue * rq = newQueue(pp);
 	//Text기반 GUI관리 구조체 생성
 	tgui = newTGUI(HEIGHT,WIDTH);
 	//메세지 관리자 생성
@@ -102,17 +38,22 @@ int main(int argc, char *argv[] )
 	//태스트 목록 읽기 및 정보 확인
 	fileread("processGen/process.txt");	
 	
-	//결과 로그 파일 
-	FILE * logfile = fopen("Gantt/log.txt","w");
-
 	//수평선, 타이틀명 상수 문자열화(한번만 만들고 재활용)
 	char * horline = strHorLine(WIDTH);
-	char * title = "TEAM 8 SCHEDULER";	
-	char titlesp[WIDTH] = " ";	// 타이틀 가운데 정렬 용 공백 문자열
+	char title[64] = "TEAM 8 SCHEDULER";	
+	char titlesp[WIDTH] = " ";	//타이틀 가운데 정렬 용 공백 문자열
+	switch(pp)					//타이틀 맨 뒤에 알고리즘 종류 표기
+	{
+		case FIFO:	strcat(title,"(FIFO)"); break;
+		case SJF:	strcat(title,"(SJF)"); break;
+		case PRIO:	strcat(title,"(PRIO)"); break;
+		case RM:	strcat(title,"(RM)"); break;
+		case EDF:	strcat(title,"(EDF)"); break;
+	}
 	for( int i = 0 ; i < (WIDTH-strlen(title))/2 -2 ; i++ )
 		strcat(titlesp, " ");
 	strcat(titlesp, title);
-	title = matchformat(WIDTH,titlesp);
+	strcpy(title, matchformat(WIDTH,titlesp));
 
 	//시작 전 화면을 지우고 백버퍼도 초기화 함
 	printf("scheduler start\n");
@@ -148,7 +89,19 @@ int main(int argc, char *argv[] )
 		}
 		sprintf(tgui->str,"└%s┘", horline);
 		draw(tgui,0,LIST_Y+LIST_SIZE+1,tgui->str);
-
+	
+		//키보드 입력
+		if( kbhit() )
+		{
+			char in = getchar();
+			if( in == 'q')
+			{
+				sprintf(msg->str,"[%dms] Quit", (int)schedulerTime/1000);
+				insertMSG();
+	            isrunning = 0;
+				termicountdown = 0.0;
+			}
+		}
 		/***********************실직적인 메인************************/
 
 		//실행 정보 표시
@@ -168,7 +121,7 @@ int main(int argc, char *argv[] )
 				int index = insertNode(rq, node);	//해당 노드가 몇번 째 위치에 삽입 되었는지 저장
 				sprintf(msg->str,"[%dms] %s arrive", (int)schedulerTime/1000, node->data->name);
 				insertMSG();
-				fprintf(logfile,"%09d %s %d %d\n", (int)schedulerTime, node->data->name, (int)node->data->arrivaltime, LOG_ARRIV);
+
 								
 				pid_t pid = fork();//자식 프로세스 분기
 				if( pid < 0 )
@@ -200,7 +153,6 @@ int main(int argc, char *argv[] )
 						//그것의 상태를 스톱으로 바꿈(preemptive)
 						taskstop(node->next->data);
 						node->next->data->state = TASK_STOP;
-						fprintf(logfile,"%09d %s %d %d\n", (int)schedulerTime, node->next->data->name, (int)node->data->realdeadline, LOG_STOP);
 						sprintf(msg->str,"[%dms] %s is stop", (int)schedulerTime/1000, node->next->data->name);
 						insertMSG();
 					}
@@ -223,7 +175,6 @@ int main(int argc, char *argv[] )
 				//처음으로 처리를 시작했다고 메세지와 로그를 남김
 				sprintf(msg->str,"[%dms] %s start processing", (int)schedulerTime/1000, proc->name);
 				insertMSG();
-				fprintf(logfile,"%09d %s %d %d\n", (int)schedulerTime, proc->name, (int)proc->realdeadline, LOG_START);
 			}
 			//STOP상태였으면
 			else if( proc->state == TASK_STOP )
@@ -231,7 +182,6 @@ int main(int argc, char *argv[] )
 				//선점당해 중단된 처리를 재개한다고 메세지와 로그를 남김
 				sprintf(msg->str,"[%dms] %s continue processing", (int)schedulerTime/1000, proc->name);
 				insertMSG();
-				fprintf(logfile,"%09d %s %d %d\n", (int)schedulerTime, proc->name, (int)proc->realdeadline, LOG_CONT);
 			}
 			
 			TIMETYPE tempremain = remaindelta;				//처리 전 남은 델타값을 임시 저장
@@ -251,7 +201,6 @@ int main(int argc, char *argv[] )
 				kill(proc->pid,SIGKILL);
 				sprintf(msg->str,"[%dms] %s finish", (int)schedulerTime/1000, proc->name);
 				insertMSG();
-				fprintf(logfile,"%09d %s %d %d\n", (int)schedulerTime, proc->name, (int)proc->realdeadline, LOG_FINISH);
 				//추출한 노를 삽입하지 않고 메모리 해제
 				free(currnode->data);
 				free(currnode);
@@ -312,10 +261,8 @@ int main(int argc, char *argv[] )
 	}
 
 	//메모리 헤제
-	fclose(logfile);
-	
 	free(horline);
-	free(title);
+//	free(title);
 	
 	destroyTgui(tgui);
 	destroyQueue(g_tasklist);
@@ -325,4 +272,87 @@ int main(int argc, char *argv[] )
 	free(tgui);
 	free(g_tasklist);
 	free(rq);
+}
+
+//파일 읽기
+void fileread(char * filename)
+{
+	//도착시간순으로 정렬
+	g_tasklist = newQueue(FIFO);
+
+	//file read
+	FILE * file = fopen(filename,"r");
+    while (feof(file) == 0) {
+        char str[READ_BUFF_SIZE];
+        fgets(str, READ_BUFF_SIZE, file);
+    	char name[64];
+		int arr, burst, dead;
+		fscanf(file, "%s %d %d %d",name, &arr, &burst, &dead);
+		insertNewNode(g_tasklist, newProcess(name,(double)arr,(double)burst*EX_BURST,(double)dead));
+	}
+	fclose(file);
+}
+// │ {str} blank │ 형태로 문자열 양쪽 끝에 수직선을 하나 넣어줌(중요하지 않음)
+char *matchformat(int w, char *str)
+{
+	int len = strlen(str);
+    if (len > w - 2)
+        return str;
+	
+	for( int i = 0 ; i < len ; i++ )
+		if( str[i] == '\n' || str[i] == '\r' )
+			str[i] = ' ';
+
+    char *matchedstr = (char *)malloc(w * CHSIZE + 1);
+    memset(matchedstr, 0, w * CHSIZE + 1);
+
+    strcat(matchedstr, "│");
+    strcat(matchedstr, str);
+
+    for (int i = 0; i < w - len - 2; i++)
+    {
+        strcat(matchedstr, " ");
+    }
+
+    strcat(matchedstr, "│");
+    return matchedstr;
+}
+//w-2만큼 수평선을 만들어서 반환(중요하지 않음)
+char *strHorLine(int w)
+{
+    char *line = (char *)malloc(w * CHSIZE + 1);
+    memset(line, 0, w * CHSIZE);
+
+    for (int i = 0; i < w - 2; i++)
+        strcat(line, "─");
+
+    return line;
+}
+
+//키보드 버퍼가 비였는데 확인
+int kbhit(void)
+{
+  struct termios oldt, newt;
+  int ch;
+  int oldf;
+
+  tcgetattr(STDIN_FILENO, &oldt);
+  newt = oldt;
+  newt.c_lflag &= ~(ICANON | ECHO);
+  tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+  oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+  fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+
+  ch = getchar();
+
+  tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+  fcntl(STDIN_FILENO, F_SETFL, oldf);
+
+  if(ch != EOF)
+  {
+    ungetc(ch, stdin);
+    return 1;
+  }
+
+  return 0;
 }

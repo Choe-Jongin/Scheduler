@@ -1,6 +1,13 @@
 #pragma once
 #include "process.h"
 
+//알고리즘 번호
+#define FIFO	0				
+#define SJF		1
+#define PRIO	2
+#define RM		3
+#define EDF		4
+
 //Node, 연결리스트 방식의 노드임
 typedef struct element
 {
@@ -18,9 +25,15 @@ int getPriority( Process * proc, int pp )
 
  	switch( pp )
 	{
-	case 0:	//도착시간 순 (FIFO)
+	case FIFO:	//도착시간 순 (FIFO)
 		return proc->arrivaltime;
-	case 1:	//데드라인 적은 순(RM)
+	case SJF:	//짧은 작업  순(SJF)
+		return (int)proc->bursttime;
+	case PRIO:	//우선순위 순(PRIO)
+		return (int)proc->deadline;
+	case RM:	//데드라인 적은 순(RM)
+		return (int)proc->deadline;
+	case EDF:	//현재 시점 마감 임박 순(EDF)
 		return (int)proc->deadline;
 	}
 
@@ -58,7 +71,7 @@ Queue * newDefaultQueue()
 	newq->size = 0;
 	newq->head = newq->endnode;		//아무것도 없을 땡 더미노드가 헤드임
 	newq->tail = newq->endnode;		//더미노드는 항상 꼬리임
-	newq->pp = 0;					//기본적으론 선입선출(FIFO)임 
+	newq->pp = FIFO;				//기본적으론 선입선출(FIFO)임 
 
 	return newq;
 }
@@ -86,7 +99,7 @@ int insertNode( Queue * queue, Node * node )
 		queue->head = node;
 		queue->head->next = queue->tail;
 		queue->tail->prev = queue->head;
-		index = 0;
+		index == 0;
 	}
 	//새로 들어온 노드가 제일 우선 순위가 높으면 헤드에 넣음
 	else if( node->priority <= queue->head->priority )
