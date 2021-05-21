@@ -26,15 +26,15 @@ int getPriority( Process * proc, int pp )
  	switch( pp )
 	{
 	case FIFO:	//도착시간 순 (FIFO)
-		return proc->arrivaltime;
+		return (int)proc->arrivaltime;
 	case SJF:	//짧은 작업  순(SJF)
 		return (int)proc->bursttime;
 	case PRIO:	//우선순위 순(PRIO)
-		return (int)proc->deadline;
+		return 0;
 	case RM:	//데드라인 적은 순(RM)
 		return (int)proc->deadline;
 	case EDF:	//현재 시점 마감 임박 순(EDF)
-		return (int)proc->deadline;
+		return (int)proc->realdeadline;
 	}
 
 	return 0;

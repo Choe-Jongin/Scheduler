@@ -201,7 +201,7 @@ int main(int argc, char *argv[] )
 				kill(proc->pid,SIGKILL);
 				sprintf(msg->str,"[%dms] %s finish", (int)schedulerTime/1000, proc->name);
 				insertMSG();
-				//추출한 노를 삽입하지 않고 메모리 해제
+				//추출한 노드를 삽입하지 않고 메모리 해제
 				free(currnode->data);
 				free(currnode);
 			}
