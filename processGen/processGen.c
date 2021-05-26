@@ -107,8 +107,8 @@ int main(int argc, char * argv[])
 		{
 			char processname[64];
 			int arrivtime 	= ((float)(rand()%(size-1))/size)*exptime + (rand()%300) MSEC + rand()%1000;
-			int bursttime 	= ((float)((rand()%1000)*1000 + rand()%1000)/500000.0f)*(expCPU/100)*exptime/size;
-			int deadline	= (int)(bursttime*( 1.0f + (float)(rand()%100)/100.0f ));
+			int bursttime 	= ((float)((rand()%1000)*1000 + rand()%1000)/500000.0f)*((float)expCPU/100.0f)*exptime/size;
+			int deadline	= (int)(bursttime*( 1.3f + (float)(rand()%100)/100.0f ));
 			int priority	= rand()%(size);
 //			int deadline	= size * 1000 + rand()%(9 MSEC *size);
 //			int bursttime 	= 1 + (deadline*(rand()%((expCPU-1)/5)))/(size*10);

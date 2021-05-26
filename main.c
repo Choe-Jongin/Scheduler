@@ -2,7 +2,6 @@
 
 int main(int argc, char *argv[] )
 {
-	
 	//스케줄링 알고리즘
 	int pp = RM;
 	if( argc > 1 )
@@ -25,10 +24,10 @@ int main(int argc, char *argv[] )
 	tgui = newTGUI(HEIGHT,WIDTH);
 	//메세지 관리자 생성
 	msg = newMSG();
-
+	
 	int isrunning = 1;							//메인루프 동작 여부 결정
 	double schedulerTime = 0.0;					//스케줄러의 시간 0~끝날때까지 us단위
-	double termicountdown = 3*1000.0*1000.0;	//처리 후 메인루프가 끝나기 까지
+	double termicountdown = 1*1000.0*1000.0;	//처리 후 메인루프가 끝나기 까지
 
 	//시간 측정을 위한 변수들
 	struct timeval elap, curr;
@@ -118,53 +117,48 @@ int main(int argc, char *argv[] )
 		draw(tgui, 5, 4, tgui->str);
 		
 		//task의 도착확인, g_tasklist의 가장 앞 노드의 도착 시간이 실행시간보다 적으면 도착한것임
-		while(g_tasklist->head != g_tasklist->endnode)
+		while(g_tasklist->head != g_tasklist->endnode && g_tasklist->head->data->arrivaltime <= (int)schedulerTime )
 		{
-			//도착시 g_tasklist에서 Pop하고 런큐에 삽입 
-			if( g_tasklist->head->data->arrivaltime <= (int)schedulerTime )
-			{	
-				Node * node = popQueue(g_tasklist);
-				taskrun(node->data); // state load -> wating
-				int index = insertNode(rq, node);	//해당 노드가 몇번 째 위치에 삽입 되었는지 저장
-				sprintf(msg->str,"[%dms] %s arrive", (int)schedulerTime/1000, node->data->name);
+			Node * node = popQueue(g_tasklist);
+			taskrun(node->data); // state load -> wating
+			int index = insertNode(rq, node);	//해당 노드가 몇번 째 위치에 삽입 되었는지 저장
+			sprintf(msg->str,"[%dms] %s arrive", (int)schedulerTime/1000, node->data->name);
+			insertMSG();
+							
+			pid_t pid = fork();//자식 프로세스 분기
+			if( pid < 0 )
+			{
+				sprintf(msg->str,"[%dms] fork faild PID : %d", (int)schedulerTime/1000, pid);
 				insertMSG();
+			}
+			else if(pid == 0)
+			{
+				//자식 프로세스 생성
+				//자식 프로세스가 생성되었어도 실행은 되면 안되기에 즉시 정지
+				raise(SIGSTOP);
+				char * argv[] = {"dummy/dummytask", node->data->name, NULL};
+				char * env[] = {NULL};
+				execve("dummy/dummytask", argv, env);
 
-								
-				pid_t pid = fork();//자식 프로세스 분기
-				if( pid < 0 )
-				{
-					sprintf(msg->str,"[%dms] fork faild PID : %d", (int)schedulerTime/1000, pid);
+				sprintf(msg->str,"[%dms] child task is not excuted", (int)schedulerTime/1000);
+				insertMSG();
+				break;
+			}
+			
+			node->data->pid = pid;
+			//우선순위가 가장 높은게 도착한 것이였을 경우(맨 앞에 저장되었을 경우)
+			if( index == 0 )
+			{
+				//기존의 노드 처리중이였으면
+				if( node->next != rq->endnode && node->next->data->state == TASK_RUN)
+				{ 	
+					//그것의 상태를 스톱으로 바꿈(preemptive)
+					taskstop(node->next->data);
+					node->next->data->state = TASK_STOP;
+					sprintf(msg->str,"[%dms] %s is stop", (int)schedulerTime/1000, node->next->data->name);
 					insertMSG();
 				}
-				else if(pid == 0)
-				{
-					//자식 프로세스 생성
-					//자식 프로세스가 생성되었어도 실행은 되면 안되기에 즉시 정지
-					char * argv[] = {"dummy/dummytask", node->data->name, NULL};
-					char * env[] = {NULL};
-					raise(SIGSTOP);
-					execve("dummy/dummytask", argv, env);
-
-					sprintf(msg->str,"[%dms] child task is not excuted", (int)schedulerTime/1000);
-					insertMSG();
-					break;
-				}
-				
-				node->data->pid = pid;
-				//우선순위가 가장 높은게 도착한 것이였을 경우(맨 앞에 저장되었을 경우)
-				if( index == 0 )
-				{
-					//기존의 노드 처리중이였으면
-					if( node->next != rq->endnode && node->next->data->state == TASK_RUN)
-					{ 	
-						//그것의 상태를 스톱으로 바꿈(preemptive)
-						taskstop(node->next->data);
-						node->next->data->state = TASK_STOP;
-						sprintf(msg->str,"[%dms] %s is stop", (int)schedulerTime/1000, node->next->data->name);
-						insertMSG();
-					}
-				}
-			}else break;
+			}
 		}
 		
 		//진짜 실행해야 하는 단 하나의 노드를 처리 하는 부분
@@ -213,7 +207,6 @@ int main(int argc, char *argv[] )
 				free(currnode);
 			}
 		}
-
 
 		/***********************각종 리스트 출력*************************/
 		//Task list 출력
@@ -269,7 +262,6 @@ int main(int argc, char *argv[] )
 
 	//메모리 헤제
 	free(horline);
-//	free(title);
 	
 	destroyTgui(tgui);
 	destroyQueue(g_tasklist);
@@ -297,30 +289,25 @@ void fileread(char * filename, int pp)
 	}
 	//file read
 	FILE * file = fopen(filename,"r");
-    while (feof(file) == 0) {
-        char str[READ_BUFF_SIZE];
-        //fgets(str, READ_BUFF_SIZE, file);
+    while (feof(file) == 0)
+	{
+        char str[READ_BUFF_SIZE] = "";
     	char name[64];
 		int arr, burst;
-		int priority;
-		int dead;
-		switch(type)
-		{
-		case 0:
-			fscanf(file, "%s %d %d",name, &arr, &burst);
-			insertNewNode(g_tasklist, newProcess(name,(double)arr,(double)burst*EX_BURST, 0, 0));
+		int priority = 0;
+		int dead = 0;
+
+		fscanf(file,"%s",name);
+		if( feof(file) )
 			break;
-		case 1:
-			fscanf(file, "%s %d %d %d",name, &arr, &burst, &priority);
-			insertNewNode(g_tasklist, newProcess(name,(double)arr,(double)burst*EX_BURST, 0, priority));
-			break;
-		case 2:
-			fscanf(file, "%s %d %d %d",name, &arr, &burst, &dead);
-			insertNewNode(g_tasklist, newProcess(name,(double)arr,(double)burst*EX_BURST, dead, 0));
-			break;
-		}
-	//	fscanf(file, "%s %d %d %d",name, &arr, &burst, &dead);
-	//	insertNewNode(g_tasklist, newProcess(name,(double)arr,(double)burst*EX_BURST,(double)dead));
+		fscanf(file,"%d",&arr);
+		fscanf(file,"%d",&burst);
+		if( type == 1 )
+			fscanf(file,"%d", &priority);
+		if( type == 2)
+			fscanf(file,"%d", &dead);
+		
+		insertNewNode(g_tasklist, newProcess(name,(double)arr,(double)burst*EX_BURST, dead, priority));
 	}
 	fclose(file);
 }
