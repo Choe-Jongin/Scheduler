@@ -36,7 +36,14 @@ int main(int argc, char *argv[] )
 	gettimeofday(&elap, NULL);
 	
 	//태스트 목록 읽기 및 정보 확인
-	fileread("processGen/process.txt");	
+	if( pp == FIFO || pp == SJF )
+		fileread("processGen/uniprocess.txt", pp);	
+	else if( pp == RM || pp == EDF )
+		fileread("processGen/rtprocess.txt", pp);	
+	else if( pp == PRIO )
+		fileread("processGen/prioprocess.txt", pp);	
+	else
+		fileread("processGen/uniprocess.txt", pp);	
 	
 	//수평선, 타이틀명 상수 문자열화(한번만 만들고 재활용)
 	char * horline = strHorLine(WIDTH);
@@ -275,20 +282,45 @@ int main(int argc, char *argv[] )
 }
 
 //파일 읽기
-void fileread(char * filename)
+void fileread(char * filename, int pp)
 {
 	//도착시간순으로 정렬
 	g_tasklist = newQueue(FIFO);
-
+	int type = 0;
+	switch(pp)
+	{
+		case FIFO:	type = 0; break;
+		case SJF:	type = 0; break;
+		case PRIO:	type = 1; break;
+		case RM:	type = 2; break;
+		case EDF:	type = 2; break;
+	}
 	//file read
 	FILE * file = fopen(filename,"r");
     while (feof(file) == 0) {
         char str[READ_BUFF_SIZE];
-        fgets(str, READ_BUFF_SIZE, file);
+        //fgets(str, READ_BUFF_SIZE, file);
     	char name[64];
-		int arr, burst, dead;
-		fscanf(file, "%s %d %d %d",name, &arr, &burst, &dead);
-		insertNewNode(g_tasklist, newProcess(name,(double)arr,(double)burst*EX_BURST,(double)dead));
+		int arr, burst;
+		int priority;
+		int dead;
+		switch(type)
+		{
+		case 0:
+			fscanf(file, "%s %d %d",name, &arr, &burst);
+			insertNewNode(g_tasklist, newProcess(name,(double)arr,(double)burst*EX_BURST, 0, 0));
+			break;
+		case 1:
+			fscanf(file, "%s %d %d %d",name, &arr, &burst, &priority);
+			insertNewNode(g_tasklist, newProcess(name,(double)arr,(double)burst*EX_BURST, 0, priority));
+			break;
+		case 2:
+			fscanf(file, "%s %d %d %d",name, &arr, &burst, &dead);
+			insertNewNode(g_tasklist, newProcess(name,(double)arr,(double)burst*EX_BURST, dead, 0));
+			break;
+		}
+	//	fscanf(file, "%s %d %d %d",name, &arr, &burst, &dead);
+	//	insertNewNode(g_tasklist, newProcess(name,(double)arr,(double)burst*EX_BURST,(double)dead));
 	}
 	fclose(file);
 }

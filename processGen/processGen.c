@@ -2,11 +2,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define MSEC	*1000
+#define SEC		*1000*1000
+
 int main(int argc, char * argv[])
 {
-	int size = 100;
-	int dist = 0; // 0:uniform, 1:exponetial, 2:Poisson
+	int size = 30;
+	int dist = 0;	// 0:uniform, 1:exponetial, 2:Poisson
 	int expCPU = 100;
+	int type = 0;	// 0:UNIV, 1:RT, 2:Priority
+	int exptime = 10 SEC;
 
 	srand((unsigned)time(NULL));
 
@@ -35,7 +40,34 @@ int main(int argc, char * argv[])
 		//CPU이용률 설정(정확한 값이 아닌 그 부근에서 결정)
 		if( strcmp(prop,"CPU") == 0)
 			expCPU = atoi(value);
+	
+		//기대 실행 시간(초단위)
+		if( strcmp(prop,"time") == 0)
+			exptime = atoi(value) SEC;
 
+		if( strcmp(prop,"type") == 0 || strcmp(prop,"TYPE") == 0)
+		{
+			if( strcmp(value,"UNI") == 0 || strcmp(value,"uni") == 0 )
+			{
+				printf("for universar scheduler \n");
+				type = 0;
+			}
+			else if( strcmp(value,"RT") == 0 || strcmp(value,"real") == 0 )
+			{
+				printf("for real time scheduler \n");
+				type = 1;
+			}
+			else if( strcmp(value,"PRIO") == 0 || strcmp(value,"prio") == 0 )
+			{
+				printf("for Priority scheduler \n");
+				type = 2;
+			}
+			else
+			{
+				printf("%s is can't support \n", value);
+			}
+
+		}
 		//분포 설정 
 		if( strcmp(prop,"dist") == 0 || strcmp(prop,"distribution") == 0)
 		{
@@ -51,30 +83,58 @@ int main(int argc, char * argv[])
 		}
 	}
 
-	FILE * file = fopen("process.txt","w");
-
-
+	FILE * file;
+	
+	switch( type )
+	{
+		case 0: //universal
+			file = fopen("uniprocess.txt","w"); break;
+		case 1: //real time
+			file = fopen("rtprocess.txt","w"); break;
+		case 2: //priority
+			file = fopen("prioprocess.txt","w"); break;
+	}
+	
+	exptime = (exptime/expCPU)*100;
 	int totalWCET = 0;
 	int totaldead = 0;
 	float totalCPUutil = 0;
+	
 	switch( dist )
 	{
 	case 0:
 		for( int i = 0 ; i < size ; i++ )
 		{
 			char processname[64];
-			int arrivtime 	= 1000 + rand()%(10000*1000);
-			int deadline	= size*1000 + rand()%(9000*size);
-			int bursttime 	= 1 + (deadline*(rand()%((expCPU-1)/5)))/(size*10);
-			sprintf(processname,"%c%c%c%c%04d", (65+rand()%26), (65+rand()%26), (65+rand()%26), (65+rand()%26), rand()%10000);
-			fprintf(file,"%s %d %d %d\n",processname, arrivtime, bursttime, deadline);
+			int arrivtime 	= ((float)(rand()%(size-1))/size)*exptime + (rand()%300) MSEC + rand()%1000;
+			int bursttime 	= ((float)((rand()%1000)*1000 + rand()%1000)/500000.0f)*(expCPU/100)*exptime/size;
+			int deadline	= (int)(bursttime*( 1.0f + (float)(rand()%100)/100.0f ));
+			int priority	= rand()%(size);
+//			int deadline	= size * 1000 + rand()%(9 MSEC *size);
+//			int bursttime 	= 1 + (deadline*(rand()%((expCPU-1)/5)))/(size*10);
+			
+			//sprintf(processname,"%c%c%c%c%04d", (65+rand()%26), (65+rand()%26), (65+rand()%26), (65+rand()%26), rand()%10000);
+			sprintf(processname,"p%d",i);
+			switch( type )
+			{
+			case 0: //universal
+				fprintf(file,"%s %d %d\n",processname, arrivtime, bursttime);
+				break;
+			case 1: //real time
+				fprintf(file,"%s %d %d %d\n",processname, arrivtime, bursttime, deadline);
+				break;
+			case 2: //priority
+				fprintf(file,"%s %d %d %d\n",processname, arrivtime, bursttime, priority);
+				break;
+			}
+
 			totalWCET += bursttime;
 			totaldead += deadline;
 			totalCPUutil += (float)bursttime/deadline;
 		}
-		printf("[total] WCET : %d, average deadline : %d, CPU uitilization %d%\n", totalWCET, totaldead/size, (int)(totalCPUutil*100));
+		//printf("total WCET : %d, average deadline : %d, CPU uitilization %d%\n", totalWCET, totaldead/size, (int)(totalCPUutil*100));
+		printf("size : %d, total WCET : %d\n", size, totalWCET );
 		break;
-
 	}
 
 	fclose(file);

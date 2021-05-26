@@ -24,12 +24,13 @@ typedef struct task_struct{
 	TIMETYPE deadline;		//데드라인
 	TIMETYPE realdeadline;	//실제 데드라인(스케줄러 시간으로 언제 끝나야 하는지)
 	TIMETYPE remaintime;	//남아있는 처리 시간
-	int state; 				// 프로세서 상태  -1: not yet inserted the rq, 0: waiting, 1:running, 2:stoped, 3:finish
+	int priority;			//우선순위(우선순위 스케줄링에서만 유효)
+	int state; 				//프로세서 상태  -1: not yet inserted the rq, 0: waiting, 1:running, 2:stoped, 3:finish
 
 }Process;
 
 //process 생성 
-Process * newProcess(char * name, TIMETYPE arr, TIMETYPE burst, TIMETYPE dead)
+Process * newProcess(char * name, TIMETYPE arr, TIMETYPE burst, TIMETYPE dead, int priority)
 {
 	Process * proc = (Process*)malloc(sizeof(Process));
 
@@ -40,6 +41,7 @@ Process * newProcess(char * name, TIMETYPE arr, TIMETYPE burst, TIMETYPE dead)
 	proc->realdeadline	= arr + dead;
 	proc->remaintime	= burst;
 	proc->state			= TASK_LOAD;
+	proc->priority		= priority;
 
 	return proc;
 }

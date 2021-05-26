@@ -30,7 +30,7 @@ int getPriority( Process * proc, int pp )
 	case SJF:	//짧은 작업  순(SJF)
 		return (int)proc->bursttime;
 	case PRIO:	//우선순위 순(PRIO)
-		return 0;
+		return proc->priority;
 	case RM:	//데드라인 적은 순(RM)
 		return (int)proc->deadline;
 	case EDF:	//현재 시점 마감 임박 순(EDF)
