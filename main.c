@@ -4,19 +4,36 @@ int main(int argc, char *argv[] )
 {
 	//스케줄링 알고리즘
 	int pp = RM;
+	int pptype = PP_RT;
 	if( argc > 1 )
 	{
 		if( strcmp(argv[1], "FIFO") == 0 || strcmp(argv[1], "FCFS") == 0 )
+		{
 			pp = FIFO;
-		if( strcmp(argv[1], "SJF") == 0 )
+			pptype = PP_UNIV;
+		}
+		else if( strcmp(argv[1], "SJF") == 0 )
+		{
 			pp = SJF;
-		if( strcmp(argv[1], "PRIO") == 0 || strcmp(argv[1], "priority") == 0)
+			pptype = PP_UNIV;
+		}
+		else if( strcmp(argv[1], "PRIO") == 0 || strcmp(argv[1], "priority") == 0)
+		{
 			pp = PRIO;
-		if( strcmp(argv[1], "RM") == 0 )
+			pptype = PP_PRIO;
+		}
+		else if( strcmp(argv[1], "RM") == 0 )
+		{
 			pp = RM;
-		if( strcmp(argv[1], "EDF") == 0 )
+			pptype = PP_RT;
+		}
+		else if( strcmp(argv[1], "EDF") == 0 )
+		{	
 			pp = EDF;
+			pptype = PP_RT;
+		}
 	}
+//	pptype = getPolicyType(pp);
 
 	//Run Queue 생성(RM 알고리즘)
 	Queue * rq = newQueue(pp);
@@ -35,14 +52,14 @@ int main(int argc, char *argv[] )
 	gettimeofday(&elap, NULL);
 	
 	//태스트 목록 읽기 및 정보 확인
-	if( pp == FIFO || pp == SJF )
-		fileread("processGen/uniprocess.txt", pp);	
-	else if( pp == RM || pp == EDF )
-		fileread("processGen/rtprocess.txt", pp);	
-	else if( pp == PRIO )
-		fileread("processGen/prioprocess.txt", pp);	
+	if( pptype == PP_UNIV )
+		fileread("processGen/uniprocess.txt", pptype);	
+	else if( pptype == PP_PRIO )
+		fileread("processGen/prioprocess.txt", pptype);	
+	else if( pptype == PP_RT )
+		fileread("processGen/rtprocess.txt", pptype);	
 	else
-		fileread("processGen/uniprocess.txt", pp);	
+		fileread("processGen/uniprocess.txt", PP_UNIV);	
 	
 	//수평선, 타이틀명 상수 문자열화(한번만 만들고 재활용)
 	char * horline = strHorLine(WIDTH);
@@ -62,10 +79,13 @@ int main(int argc, char *argv[] )
 	strcpy(title, matchformat(WIDTH,titlesp));
 
 	//시작 전 화면을 지우고 백버퍼도 초기화 함
-	printf("scheduler start\n");
+	insertStrMSG("scheduler start");
 	cls();
 	invalidRect(tgui,0,0,WIDTH,HEIGHT);
 
+	//가장 마지막 추가된 노드
+	Node * newtasknode = NULL;
+	
 	//main loop
 	while(termicountdown > 0.0)
 	{
@@ -120,6 +140,7 @@ int main(int argc, char *argv[] )
 		while(g_tasklist->head != g_tasklist->endnode && g_tasklist->head->data->arrivaltime <= (int)schedulerTime )
 		{
 			Node * node = popQueue(g_tasklist);
+			newtasknode = node;		//가장 마지막에 추가된 노드 주소 저장
 			taskrun(node->data); // state load -> wating
 			int index = insertNode(rq, node);	//해당 노드가 몇번 째 위치에 삽입 되었는지 저장
 			sprintf(msg->str,"[%dms] %s arrive", (int)schedulerTime/1000, node->data->name);
@@ -185,14 +206,13 @@ int main(int argc, char *argv[] )
 				insertMSG();
 			}
 			
-			TIMETYPE tempremain = remaindelta;				//처리 전 남은 델타값을 임시 저장
 			remaindelta = remaindelta - taskupdate(proc, remaindelta);	// 남은 시간 = 남은시간 - task를 처리하는데 소모한 시간
 
 			//태스크가 끝나지 않았을 경우
 			if( proc->state != TASK_FINISH )
 			{
-				sprintf(tgui->str,"[%dms] %s spend %.3fus, remain Execution Time is %.3f", 
-							(int)schedulerTime/1000, proc->name, tempremain, proc->remaintime);
+				sprintf(tgui->str,"[%dms] RUN : %s, remain %.0fus", 
+						(int)schedulerTime/1000, proc->name, proc->remaintime);
 				draw(tgui, 5, 5, tgui->str);
 				insertNode(rq,currnode);	//다시 런큐에 삽입 함
 			}
@@ -227,9 +247,25 @@ int main(int argc, char *argv[] )
 		draw(tgui,RUNQ_X + 5, LIST_Y-1, tgui->str);
 		int rqi = 0;
 		for( Node * it = rq->head ; it != rq->endnode && rqi < LIST_SIZE; it = it->next )		
-		{
-			sprintf(tgui->str,"%s arrival : %d, burst : %d , deadline : %d",
-							it->data->name, (int)it->data->arrivaltime, (int)it->data->bursttime, (int)it->data->deadline);
+		{	
+			switch(pptype)
+			{
+			case PP_PRIO:
+				sprintf(tgui->str,"%s arrival : %d, burst : %d, priority : %d",
+						it->data->name, (int)it->data->arrivaltime, (int)it->data->bursttime, (int)it->data->priority);
+				break;
+			case PP_RT:
+				sprintf(tgui->str,"%s arrival : %d, burst : %d, deadline : %d",
+						it->data->name, (int)it->data->arrivaltime, (int)it->data->bursttime, (int)it->data->deadline);
+				break;
+			default:
+				sprintf(tgui->str,"%s arrival : %d, burst : %d",
+						it->data->name, (int)it->data->arrivaltime, (int)it->data->bursttime);
+			}
+			if( it == newtasknode )
+			{
+				draw(tgui,MESSAGE_X-6, LIST_Y+rqi, "NEW!!");
+			}
 			draw(tgui,RUNQ_X+5, LIST_Y+rqi, tgui->str);
 			rqi++;
 		}
@@ -274,22 +310,17 @@ int main(int argc, char *argv[] )
 }
 
 //파일 읽기
-void fileread(char * filename, int pp)
+void fileread(char * filename, int pptype)
 {
 	//도착시간순으로 정렬
 	g_tasklist = newQueue(FIFO);
-	int type = 0;
-	switch(pp)
-	{
-		case FIFO:	type = 0; break;
-		case SJF:	type = 0; break;
-		case PRIO:	type = 1; break;
-		case RM:	type = 2; break;
-		case EDF:	type = 2; break;
-	}
+	
+	sprintf(msg->str,"filename : %s", filename);
+	insertMSG();
+
 	//file read
 	FILE * file = fopen(filename,"r");
-    while (feof(file) == 0)
+	while (feof(file) == 0)
 	{
         char str[READ_BUFF_SIZE] = "";
     	char name[64];
@@ -302,15 +333,20 @@ void fileread(char * filename, int pp)
 			break;
 		fscanf(file,"%d",&arr);
 		fscanf(file,"%d",&burst);
-		if( type == 1 )
+
+		if( pptype == PP_PRIO )
 			fscanf(file,"%d", &priority);
-		if( type == 2)
+		if( pptype == PP_RT)
 			fscanf(file,"%d", &dead);
 		
 		insertNewNode(g_tasklist, newProcess(name,(double)arr,(double)burst*EX_BURST, dead, priority));
 	}
+
 	fclose(file);
 }
+
+//이 아래는 볼 필요 없음
+
 // │ {str} blank │ 형태로 문자열 양쪽 끝에 수직선을 하나 넣어줌(중요하지 않음)
 char *matchformat(int w, char *str)
 {
@@ -374,4 +410,24 @@ int kbhit(void)
   }
 
   return 0;
+}
+
+
+
+//도입 고려중인 방식임(현재 실 사용 없음)
+int getPolicyType(int pp)
+{
+	switch(pp)
+	{
+	case FIFO:
+	case SJF:
+		return PP_UNIV;
+	case PRIO:
+		return PP_PRIO;
+	case RM:
+	case EDF:
+		return PP_RT;
+	}
+
+	return PP_UNIV;
 }

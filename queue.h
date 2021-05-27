@@ -182,9 +182,13 @@ void destroyQueue(Queue * queue)
 	while( queue->head != queue->endnode )
 	{
 		Node * node = popQueue(queue);
+		if( node->data->state == TASK_RUN )
+			kill(node->data->pid,SIGKILL);
 		free(node->data);
 		free(node);
 	}
+	
+	free(queue->endnode);
 }
 
 

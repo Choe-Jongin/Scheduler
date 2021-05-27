@@ -24,7 +24,7 @@ typedef struct task_struct{
 	TIMETYPE deadline;		//데드라인
 	TIMETYPE realdeadline;	//실제 데드라인(스케줄러 시간으로 언제 끝나야 하는지)
 	TIMETYPE remaintime;	//남아있는 처리 시간
-	int priority;			//우선순위(우선순위 스케줄링에서만 유효)
+	int priority;			//우선순위(우선순위 스케줄링에서만 유효, node의 우선수위와는 다른 것임)
 	int state; 				//프로세서 상태  -1: not yet inserted the rq, 0: waiting, 1:running, 2:stoped, 3:finish
 
 }Process;
