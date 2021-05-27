@@ -47,7 +47,7 @@ int main(int argc, char * argv[])
 
 		if( strcmp(prop,"type") == 0 || strcmp(prop,"TYPE") == 0)
 		{
-			if( strcmp(value,"UNI") == 0 || strcmp(value,"uni") == 0 )
+			if( strcmp(value,"UNI") == 0 || strcmp(value,"uni") == 0 || strcmp(value,"UNIV") == 0 )
 			{
 				printf("for universar scheduler \n");
 				type = 0;
@@ -106,7 +106,7 @@ int main(int argc, char * argv[])
 		for( int i = 0 ; i < size ; i++ )
 		{
 			char processname[64];
-			int arrivtime 	= ((float)(rand()%(size-1))/size)*exptime + (rand()%300) MSEC + rand()%1000;
+			int arrivtime 	= ((float)(rand()%(size-1))/size)*exptime*(expCPU/100.0f) + (rand()%300) MSEC + rand()%1000;
 			int bursttime 	= ((float)((rand()%1000)*1000 + rand()%1000)/500000.0f)*((float)expCPU/100.0f)*exptime/size;
 			int deadline	= (int)(bursttime*( 1.3f + (float)(rand()%100)/100.0f ));
 			int priority	= rand()%(size);

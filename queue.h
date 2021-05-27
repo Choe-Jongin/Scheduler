@@ -15,6 +15,8 @@ typedef struct element
 	struct element * next;
 	Process * data;
 	int priority;			//노드의 우선순위, 오름차순 이기에 수치가 낮을 수록 우선순위가 높음
+	TIMETYPE waiting;       //도착 후 실제 처리 시작까지 걸린 시간(대기 시간)
+	int isdeadmiss;			//데드라인 미스(1이면 MISS)
 }Node;
 
 //알고리즘 별 우선순위 값을 찾아줌
@@ -48,6 +50,8 @@ Node * newNode(Process * proc, int pp)
 	newnode->next 		= NULL;
 	newnode->data 		= proc;
 	newnode->priority	= getPriority(proc, pp);	
+	newnode->waiting	= 0;
+	newnode->isdeadmiss	= 0;
 	return newnode;
 }
 
@@ -107,7 +111,7 @@ int insertNode( Queue * queue, Node * node )
 		queue->head = node;
 		queue->head->next = queue->tail;
 		queue->tail->prev = queue->head;
-		index == 0;
+		index = 0;
 	}
 	//새로 들어온 노드가 제일 우선 순위가 높으면 헤드에 넣음(선점형이거나 헤처리도중이 아닐때만, 즉 비선점형이면 헤드가 RUN이 아닐때만)
 	else if( node->priority <= queue->head->priority && ( isPreemptive(queue) == 1 || queue->head->data->state != TASK_RUN ) ) 
@@ -115,7 +119,7 @@ int insertNode( Queue * queue, Node * node )
 		node->next = queue->head;
 		queue->head->prev = node;
 		queue->head = node;
-		index == 0;
+		index = 0;
 	}
 	//큐가 비어있지 않으면
 	else

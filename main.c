@@ -7,7 +7,21 @@ int main(int argc, char *argv[] )
 	int pptype = PP_RT;
 	if( argc > 1 )
 	{
-		if( strcmp(argv[1], "FIFO") == 0 || strcmp(argv[1], "FCFS") == 0 )
+		
+		if( strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "-help") == 0 )
+		{	
+			printf("./schedeuler {algorithm} {filename}\n");
+			printf("default : ./schedeuler RM (appropriate file)\n");
+			printf("algorithm : FIFO(FCFS), SJF, PRIO, RM, EDF\n");
+			printf("\n");
+			printf("filename list \n");
+			printf("name arrival burst          -> processGen/uniprocess.txt\n");
+			printf("name arrival burst priority -> processGen/prioprocess.txt\n");
+			printf("name arrival burst deadline -> processGen/rtprocess.txt\n");
+
+			return 0;
+		}
+		else if( strcmp(argv[1], "FIFO") == 0 || strcmp(argv[1], "FCFS") == 0 )
 		{
 			pp = FIFO;
 			pptype = PP_UNIV;
@@ -45,6 +59,11 @@ int main(int argc, char *argv[] )
 	int isrunning = 1;							//메인루프 동작 여부 결정
 	double schedulerTime = 0.0;					//스케줄러의 시간 0~끝날때까지 us단위
 	double termicountdown = 1*1000.0*1000.0;	//처리 후 메인루프가 끝나기 까지
+	double totwaiting = 0.0f;					//총 대기시간(평균대기시간 = 총대기/처리시작태스크수)
+	double avgwaiting = 0.0f;					//평균대기시간 = 총대기/처리시작태스크수
+	double maxwaiting = 0.0f;					//가장 오래 기다린 태스크의 대기시간
+	int size = 0;								//불러온 처리해야 할 태스크의 개수
+	int deadlinemiss = 0;						//데드라인 미스 카운터
 
 	//시간 측정을 위한 변수들
 	struct timeval elap, curr;
@@ -52,14 +71,33 @@ int main(int argc, char *argv[] )
 	gettimeofday(&elap, NULL);
 	
 	//태스트 목록 읽기 및 정보 확인
-	if( pptype == PP_UNIV )
-		fileread("processGen/uniprocess.txt", pptype);	
-	else if( pptype == PP_PRIO )
-		fileread("processGen/prioprocess.txt", pptype);	
-	else if( pptype == PP_RT )
-		fileread("processGen/rtprocess.txt", pptype);	
+	//명시했을 경우
+	if( argc > 2 && (strcmp(argv[2], "processGen/uniprocess.txt") == 0
+				 ||  strcmp(argv[2], "processGen/prioprocess.txt") == 0
+			     || strcmp(argv[2], "processGen/rtprocess.txt") == 0 ))
+	{
+		if(strcmp(argv[2], "processGen/uniprocess.txt") == 0)
+			pptype = PP_UNIV;
+		if(strcmp(argv[2], "processGen/prioprocess.txt") == 0)
+			pptype = PP_PRIO;
+		if(strcmp(argv[2], "processGen/rtprocess.txt") == 0)
+			pptype = PP_RT;
+		fileread(argv[2], pptype);
+	}
+	//따로 파일 이름을 명시하지 않았을 경우(혹은 잘못된 경로)
 	else
-		fileread("processGen/uniprocess.txt", PP_UNIV);	
+	{
+		if( pptype == PP_UNIV )
+			fileread("processGen/uniprocess.txt", pptype);	
+		else if( pptype == PP_PRIO )
+			fileread("processGen/prioprocess.txt", pptype);	
+		else if( pptype == PP_RT )
+			fileread("processGen/rtprocess.txt", pptype);	
+		else
+			fileread("processGen/uniprocess.txt", PP_UNIV);	
+	}
+
+	size = g_tasklist->size;
 	
 	//수평선, 타이틀명 상수 문자열화(한번만 만들고 재활용)
 	char * horline = strHorLine(WIDTH);
@@ -136,6 +174,20 @@ int main(int argc, char *argv[] )
 		sprintf(tgui->str,"scheduler excution time : %dms, tick %.3fus", (int)schedulerTime/1000, delta);
 		draw(tgui, 5, 4, tgui->str);
 		
+		switch(pptype)
+		{
+		case PP_UNIV:
+			sprintf(tgui->str,"average watting : %dms, max watting : %dms", (int)avgwaiting/1000, (int)maxwaiting/1000);
+			break;
+		case PP_PRIO:
+			sprintf(tgui->str,"average watting : %dms, max watting : %dms", (int)avgwaiting/1000, (int)maxwaiting/1000);
+			break;
+		case PP_RT:
+			sprintf(tgui->str,"deadline miss : %d", deadlinemiss);
+			break;
+		}
+		draw(tgui, 5, 5, tgui->str);
+		
 		//task의 도착확인, g_tasklist의 가장 앞 노드의 도착 시간이 실행시간보다 적으면 도착한것임
 		while(g_tasklist->head != g_tasklist->endnode && g_tasklist->head->data->arrivaltime <= (int)schedulerTime )
 		{
@@ -193,10 +245,16 @@ int main(int argc, char *argv[] )
 			Process * proc = currnode->data;
 			//wait이였으면(즉 처음으로 처리단계에 들어왔으면)
 			if( proc->state == TASK_WAIT )
-			{
+			{	
 				//처음으로 처리를 시작했다고 메세지와 로그를 남김
 				sprintf(msg->str,"[%dms] %s start processing", (int)schedulerTime/1000, proc->name);
 				insertMSG();
+
+				currnode->waiting = schedulerTime - proc->arrivaltime;
+				if( currnode->waiting > maxwaiting )
+					maxwaiting = currnode->waiting;
+				totwaiting += currnode->waiting;
+				avgwaiting = totwaiting/(size-g_tasklist->size);
 			}
 			//STOP상태였으면
 			else if( proc->state == TASK_STOP )
@@ -211,9 +269,41 @@ int main(int argc, char *argv[] )
 			//태스크가 끝나지 않았을 경우
 			if( proc->state != TASK_FINISH )
 			{
-				sprintf(tgui->str,"[%dms] RUN : %s, remain %.0fus", 
-						(int)schedulerTime/1000, proc->name, proc->remaintime);
-				draw(tgui, 5, 5, tgui->str);
+				//방금 처리한 노드의 정보를 출력함
+				//real time 스케줄러는 데드라인 미스 또한 체크해 봐야 함 
+				if( pptype == PP_RT )
+				{
+					//아직 데드라인 미스는 아님
+					if (proc->realdeadline >= schedulerTime )
+					{
+						sprintf(tgui->str,"[%dms] RUN : %s, remain %.0fus, watting time : %dms real deadline %dms", 
+							(int)schedulerTime/1000, proc->name, proc->remaintime, (int)currnode->waiting/1000, (int)proc->realdeadline/1000);
+					}
+					//데드라인 미스
+					else
+					{
+						sprintf(tgui->str,"[%dms] RUN : %s, remain %.0fus, watting time : %dms real deadline %dms, DEADLINE MISS", 
+							(int)schedulerTime/1000, proc->name, proc->remaintime, (int)currnode->waiting/1000, (int)proc->realdeadline/1000);
+						
+						//여기는 미스당 딱 한번만 들어와 함
+						if( currnode->isdeadmiss == 0 )
+						{
+							currnode->isdeadmiss = 1;
+							deadlinemiss++;
+							sprintf(msg->str,"[%dms] %s deadline miss", (int)schedulerTime/1000, proc->name);
+			                insertMSG();
+						}
+					}
+
+				}
+				//Real Time 스케줄러가 아니면 간단하게 현재 정보 만 출력
+				else
+				{
+					sprintf(tgui->str,"[%dms] RUN : %s, remain %.0fus, watting time : %dms", 
+						(int)schedulerTime/1000, proc->name, proc->remaintime, (int)currnode->waiting/1000);
+				}
+				draw(tgui, 5, 6, tgui->str);
+
 				insertNode(rq,currnode);	//다시 런큐에 삽입 함
 			}
 			//끝났으면
@@ -324,9 +414,7 @@ void fileread(char * filename, int pptype)
 	{
         char str[READ_BUFF_SIZE] = "";
     	char name[64];
-		int arr, burst;
-		int priority = 0;
-		int dead = 0;
+		int arr, burst, priority = 0, dead = 0;
 
 		fscanf(file,"%s",name);
 		if( feof(file) )
