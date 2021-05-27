@@ -56,8 +56,11 @@ void taskrun( Process * proc)
 //process 처리함, 소모한 시간을 돌려줌
 TIMETYPE taskupdate( Process * proc, TIMETYPE delta )
 {
-	kill(proc->pid, SIGCONT);
-	proc->state = TASK_RUN;
+	if( proc->state != TASK_RUN )
+	{
+		kill(proc->pid, SIGCONT);
+		proc->state = TASK_RUN;
+	}
 	proc->remaintime -= delta;
 	
 	//태스크가 작업을 완전히 완료 함

@@ -12,7 +12,7 @@ int main(int argc, char *argv[] )
 		{	
 			printf("./schedeuler {algorithm} {filename}\n");
 			printf("default : ./schedeuler RM (appropriate file)\n");
-			printf("algorithm : FIFO(FCFS), SJF, PRIO, RM, EDF\n");
+			printf("algorithm : FIFO(FCFS), SJF, SRF, PRIO, RM, EDF\n");
 			printf("\n");
 			printf("filename list \n");
 			printf("name arrival burst          -> processGen/uniprocess.txt\n");
@@ -29,6 +29,11 @@ int main(int argc, char *argv[] )
 		else if( strcmp(argv[1], "SJF") == 0 )
 		{
 			pp = SJF;
+			pptype = PP_UNIV;
+		}
+		else if( strcmp(argv[1], "SRF") == 0 )
+		{
+			pp = SRF;
 			pptype = PP_UNIV;
 		}
 		else if( strcmp(argv[1], "PRIO") == 0 || strcmp(argv[1], "priority") == 0)
@@ -107,6 +112,7 @@ int main(int argc, char *argv[] )
 	{
 		case FIFO:	strcat(title,"(FIFO)"); break;
 		case SJF:	strcat(title,"(SJF)"); break;
+		case SRF:	strcat(title,"(SRF)"); break;
 		case PRIO:	strcat(title,"(PRIO)"); break;
 		case RM:	strcat(title,"(RM)"); break;
 		case EDF:	strcat(title,"(EDF)"); break;
@@ -294,7 +300,6 @@ int main(int argc, char *argv[] )
 			                insertMSG();
 						}
 					}
-
 				}
 				//Real Time 스케줄러가 아니면 간단하게 현재 정보 만 출력
 				else
@@ -349,8 +354,8 @@ int main(int argc, char *argv[] )
 						it->data->name, (int)it->data->arrivaltime, (int)it->data->bursttime, (int)it->data->deadline);
 				break;
 			default:
-				sprintf(tgui->str,"%s arrival : %d, burst : %d",
-						it->data->name, (int)it->data->arrivaltime, (int)it->data->bursttime);
+				sprintf(tgui->str,"%s arrival : %d, burst : %d, remain : %d",
+						it->data->name, (int)it->data->arrivaltime, (int)it->data->bursttime, (int)it->data->remaintime);
 			}
 			if( it == newtasknode )
 			{

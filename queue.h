@@ -4,9 +4,10 @@
 //알고리즘 번호
 #define FIFO	0				
 #define SJF		1
-#define PRIO	2
-#define RM		3
-#define EDF		4
+#define SRF		2
+#define PRIO	3
+#define RM		4
+#define EDF		5
 
 //Node, 연결리스트 방식의 노드임
 typedef struct element
@@ -29,8 +30,10 @@ int getPriority( Process * proc, int pp )
 	{
 	case FIFO:	//도착시간 순 (FIFO)
 		return (int)proc->arrivaltime;
-	case SJF:	//짧은 작업  순(SJF)
+	case SJF:	//짧은 작업 순(SJF)
 		return (int)proc->bursttime;
+	case SRF:	//짧은 잔여 작업 순(SRF)
+		return (int)proc->remaintime;
 	case PRIO:	//우선순위 순(PRIO)
 		return proc->priority;
 	case RM:	//데드라인 적은 순(RM)
@@ -91,7 +94,7 @@ Queue * newQueue(int pp)
 //해당 큐가 선점형인지 비 선점형인지 반환 0:비선점, 1:선점
 int isPreemptive(Queue * queue)
 {
-	if( queue->pp == RM || queue->pp == EDF)
+	if( queue->pp == RM || queue->pp == EDF || queue->pp == SRF )
 		return 1;
 	return 0;
 }
