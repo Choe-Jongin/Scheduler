@@ -6,20 +6,12 @@ int main(int argc, char *argv[] )
 	int pp = RM;
 	int pptype = PP_RT;
 	if( argc > 1 )
-	{
-		
+	{	
 		if( strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "-help") == 0 )
-		{	
-			printf("./schedeuler {algorithm} {filename}\n");
-			printf("default : ./schedeuler RM (appropriate file)\n");
-			printf("algorithm : FIFO(FCFS), SJF, SRF, PRIO, RM, EDF\n");
-			printf("\n");
-			printf("filename list \n");
-			printf("name arrival burst          -> processGen/uniprocess.txt\n");
-			printf("name arrival burst priority -> processGen/prioprocess.txt\n");
-			printf("name arrival burst deadline -> processGen/rtprocess.txt\n");
-
-			return 0;
+		{
+			char * argv[] = {"Shelp", "Scheduler Help", NULL};
+			char * env[] = {NULL};
+			execve("Shelp", argv, env);
 		}
 		else if( strcmp(argv[1], "FIFO") == 0 || strcmp(argv[1], "FCFS") == 0 )
 		{
