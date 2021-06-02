@@ -6,8 +6,13 @@
 #define SJF		1
 #define SRF		2
 #define PRIO	3
-#define RM		4
-#define EDF		5
+#define RR		4
+#define RM		5
+#define EDF		6
+
+#define nonpreemptive 0
+#define preemptive 1
+
 
 //Node, 연결리스트 방식의 노드임
 typedef struct element
@@ -36,6 +41,8 @@ int getPriority( Process * proc, int pp )
 		return (int)proc->remaintime;
 	case PRIO:	//우선순위 순(PRIO)
 		return proc->priority;
+	case RR:	//라운드 로빈(RR), 일반큐(선입선출큐, 이 선입선출은 스케줄리 알고리즘이 아님)
+		return 0;
 	case RM:	//데드라인 적은 순(RM)
 		return (int)proc->deadline;
 	case EDF:	//현재 시점 마감 임박 순(EDF)
@@ -95,8 +102,8 @@ Queue * newQueue(int pp)
 int isPreemptive(Queue * queue)
 {
 	if( queue->pp == RM || queue->pp == EDF || queue->pp == SRF )
-		return 1;
-	return 0;
+		return preemptive;
+	return nonpreemptive;
 }
 
 //큐에 삽입하고 몇 번째에 삽입 했는지 반환
@@ -117,7 +124,9 @@ int insertNode( Queue * queue, Node * node )
 		index = 0;
 	}
 	//새로 들어온 노드가 제일 우선 순위가 높으면 헤드에 넣음(선점형이거나 헤처리도중이 아닐때만, 즉 비선점형이면 헤드가 RUN이 아닐때만)
-	else if( node->priority <= queue->head->priority && ( isPreemptive(queue) == 1 || queue->head->data->state != TASK_RUN ) ) 
+	//혹은 비선점형인데 처리가 안 끝난 태스크가 다시 돌아오면 맨 처음에 넣음
+	else if( (node->priority < queue->head->priority && ( isPreemptive(queue) == preemptive || queue->head->data->state != TASK_RUN ))
+			|| ( isPreemptive(queue) == nonpreemptive && node->data->state == TASK_RUN ) ) 
 	{
 		node->next = queue->head;
 		queue->head->prev = node;
@@ -128,12 +137,13 @@ int insertNode( Queue * queue, Node * node )
 	else
 	{
 		//순차 탐색
+		index = -1;
 		Node * it = queue->head;
 		for( it = queue->head ; it != queue->endnode ; it = it->next )
 		{
 			index++;
 			//순차 탐색 중 새 노드보다 우선순위가 낮은 기존의 노드 발견시(선점형이거나 태스크가 처리중이 아닐때만)
-			if( node->priority < it->priority && ( isPreemptive(queue) == 1 || it->data->state != TASK_RUN ) )
+			if( node->priority < it->priority && ( isPreemptive(queue) == preemptive || it->data->state != TASK_RUN ) )
 			{
 				//기존 노드 앞에 삽입 함
 				node -> prev = it->prev;
@@ -153,7 +163,6 @@ int insertNode( Queue * queue, Node * node )
 			queue->tail->prev = node;
 			index++;
 		}
-			
 	}
 
 	queue->size++;

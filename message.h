@@ -5,7 +5,7 @@
 
 #define MAX_MSG_SIZE 	20			 	//최대 몇개의 메세지를 보여줄 것인가(main.c의 LIST_SIZE보다 커선 안됨)
 #define MAX_MSG_WIDTH	40				//메세지 하나의 최대 문자열 길이(바이트 단위임)
-#define SHOW_MSG_TIME 	3*1000*1000 	//메세지를 보여줄 기간(us단위)
+#define SHOW_MSG_TIME 	30*1000*1000 	//메세지를 보여줄 기간(us단위)
 
 //메세지 관리자 구조체(하나한의 메세지 구조체가 아님을 주의!!)
 typedef struct message

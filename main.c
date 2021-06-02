@@ -33,6 +33,11 @@ int main(int argc, char *argv[] )
 			pp = PRIO;
 			pptype = PP_PRIO;
 		}
+		else if( strcmp(argv[1], "RR") == 0 )
+		{
+			pp = RR;
+			pptype = PP_UNIV;
+		}
 		else if( strcmp(argv[1], "RM") == 0 )
 		{
 			pp = RM;
@@ -54,11 +59,13 @@ int main(int argc, char *argv[] )
 	msg = newMSG();
 	
 	int isrunning = 1;							//메인루프 동작 여부 결정
+	int ispause = 0;						    //메인루프 일시정지 여부 결정
 	double schedulerTime = 0.0;					//스케줄러의 시간 0~끝날때까지 us단위
 	double termicountdown = 1*1000.0*1000.0;	//처리 후 메인루프가 끝나기 까지
-	double totwaiting = 0.0f;					//총 대기시간(평균대기시간 = 총대기/처리시작태스크수)
-	double avgwaiting = 0.0f;					//평균대기시간 = 총대기/처리시작태스크수
-	double maxwaiting = 0.0f;					//가장 오래 기다린 태스크의 대기시간
+	double totwaiting	= 0.0f;					//총 대기시간(평균대기시간 = 총대기/처리시작태스크수)
+	double avgwaiting	= 0.0f;					//평균대기시간 = 총대기/처리시작태스크수
+	double maxwaiting	= 0.0f;					//가장 오래 기다린 태스크의 대기시간
+	int runtasksize		= 0;					//현재까지 실행한 태스크의 수
 	int size = 0;								//불러온 처리해야 할 태스크의 개수
 	int deadlinemiss = 0;						//데드라인 미스 카운터
 
@@ -106,6 +113,7 @@ int main(int argc, char *argv[] )
 		case SJF:	strcat(title,"(SJF)"); break;
 		case SRF:	strcat(title,"(SRF)"); break;
 		case PRIO:	strcat(title,"(PRIO)"); break;
+		case RR:	strcat(title,"(RR)"); break;
 		case RM:	strcat(title,"(RM)"); break;
 		case EDF:	strcat(title,"(EDF)"); break;
 	}
@@ -128,6 +136,8 @@ int main(int argc, char *argv[] )
 		//흐른 시간 확인 
    	 	gettimeofday(&curr, NULL);																			//현재 시간 - 과거 프레임의 시간
 		delta = (curr.tv_sec + curr.tv_usec / 1000000.0 - elap.tv_sec - elap.tv_usec / 1000000.0)*1000000;	//지난 프레임과 비교해서 지난 시간
+		if( ispause )
+			delta = 0.0;
 		schedulerTime += delta;	//흐른 시간을 스케줄로 실행시간에 더해줌
 		
 		//백 버퍼 초기화 및 사각 테두리를 백버퍼에 등록(자세하게 안 봐도 됨)
@@ -163,6 +173,15 @@ int main(int argc, char *argv[] )
 	            isrunning = 0;
 				termicountdown = 0.0;
 			}
+			if( in == 's')
+			{
+				ispause = !ispause;
+				if( ispause )
+					sprintf(msg->str,"[%dms] Stop", (int)schedulerTime/1000);
+				else
+					sprintf(msg->str,"[%dms] Continue", (int)schedulerTime/1000);
+				insertMSG();
+			}
 		}
 		/***********************실직적인 메인************************/
 
@@ -191,7 +210,7 @@ int main(int argc, char *argv[] )
 		{
 			Node * node = popQueue(g_tasklist);
 			newtasknode = node;		//가장 마지막에 추가된 노드 주소 저장
-			taskrun(node->data); // state load -> wating
+			taskrun(node->data);	//state load -> wating
 			int index = insertNode(rq, node);	//해당 노드가 몇번 째 위치에 삽입 되었는지 저장
 			sprintf(msg->str,"[%dms] %s arrive", (int)schedulerTime/1000, node->data->name);
 			insertMSG();
@@ -225,7 +244,6 @@ int main(int argc, char *argv[] )
 				{ 	
 					//그것의 상태를 스톱으로 바꿈(preemptive)
 					taskstop(node->next->data);
-					node->next->data->state = TASK_STOP;
 					sprintf(msg->str,"[%dms] %s is stop", (int)schedulerTime/1000, node->next->data->name);
 					insertMSG();
 				}
@@ -249,10 +267,11 @@ int main(int argc, char *argv[] )
 				insertMSG();
 
 				currnode->waiting = schedulerTime - proc->arrivaltime;
+				runtasksize++;			//현재까지 실행한 태스크의 수
 				if( currnode->waiting > maxwaiting )
 					maxwaiting = currnode->waiting;
 				totwaiting += currnode->waiting;
-				avgwaiting = totwaiting/(size-g_tasklist->size);
+				avgwaiting = totwaiting/(runtasksize);
 			}
 			//STOP상태였으면
 			else if( proc->state == TASK_STOP )
