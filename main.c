@@ -58,6 +58,7 @@ int main(int argc, char *argv[] )
 	//메세지 관리자 생성
 	msg = newMSG();
 	
+	//스케줄러에 필요한 정보들
 	int isrunning = 1;							//메인루프 동작 여부 결정
 	int ispause = 0;						    //메인루프 일시정지 여부 결정
 	double schedulerTime = 0.0;					//스케줄러의 시간 0~끝날때까지 us단위
@@ -74,6 +75,10 @@ int main(int argc, char *argv[] )
 	double delta;				//지난 프레임에서 몇 us가 더 지낫는지
 	gettimeofday(&elap, NULL);
 	
+	//특정 스케줄링 알고리즘에 필요한 변수들
+	double timeq = 100*1000;	//RR	time quantum
+	double remainq = 100*1000;	//RR	처리해도 되는 남은 시간 
+
 	//태스트 목록 읽기 및 정보 확인
 	//명시했을 경우
 	if( argc > 2 && (strcmp(argv[2], "processGen/uniprocess.txt") == 0
@@ -272,6 +277,7 @@ int main(int argc, char *argv[] )
 					maxwaiting = currnode->waiting;
 				totwaiting += currnode->waiting;
 				avgwaiting = totwaiting/(runtasksize);
+				remainq = timeq;
 			}
 			//STOP상태였으면
 			else if( proc->state == TASK_STOP )
@@ -279,10 +285,12 @@ int main(int argc, char *argv[] )
 				//선점당해 중단된 처리를 재개한다고 메세지와 로그를 남김
 				sprintf(msg->str,"[%dms] %s continue processing", (int)schedulerTime/1000, proc->name);
 				insertMSG();
+				remainq = timeq;
 			}
 			
-			remaindelta = remaindelta - taskupdate(proc, remaindelta);	// 남은 시간 = 남은시간 - task를 처리하는데 소모한 시간
-
+			TIMETYPE processingtime = taskupdate(proc, remaindelta);	// task를 처리하는데 소모한 시간
+			remaindelta = remaindelta - processingtime;				// 남은 시간 = 남은시간 - task를 처리하는데 소모한 시간
+			
 			//태스크가 끝나지 않았을 경우
 			if( proc->state != TASK_FINISH )
 			{
@@ -319,6 +327,19 @@ int main(int argc, char *argv[] )
 						(int)schedulerTime/1000, proc->name, proc->remaintime, (int)currnode->waiting/1000);
 				}
 				draw(tgui, 5, 6, tgui->str);
+
+				//RR의 경우 특수 처리
+				if( pp == RR )
+				{
+					remainq -= processingtime;
+					if( remainq <= 0 )
+					{
+						taskstop(proc);
+						sprintf(msg->str,"[%dms] %s consume all time quantum", (int)schedulerTime/1000, proc->name);
+	                    insertMSG();
+
+					}
+				}
 
 				insertNode(rq,currnode);	//다시 런큐에 삽입 함
 			}
