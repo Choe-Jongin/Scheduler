@@ -225,12 +225,13 @@ int main(int argc, char *argv[] )
 			{
 				sprintf(msg->str,"[%dms] fork faild PID : %d", (int)schedulerTime/1000, pid);
 				insertMSG();
+				break;
 			}
 			else if(pid == 0)
 			{
 				//자식 프로세스 생성
 				//자식 프로세스가 생성되었어도 실행은 되면 안되기에 즉시 정지
-				raise(SIGSTOP);
+			//	raise(SIGSTOP); dummytask에서 스스로 중단하기로 변경
 				char * argv[] = {"dummy/dummytask", node->data->name, NULL};
 				char * env[] = {NULL};
 				execve("dummy/dummytask", argv, env);
@@ -239,7 +240,8 @@ int main(int argc, char *argv[] )
 				insertMSG();
 				break;
 			}
-			
+					
+			waitpid(pid,0,WUNTRACED);
 			node->data->pid = pid;
 			//우선순위가 가장 높은게 도착한 것이였을 경우(맨 앞에 저장되었을 경우)
 			if( index == 0 )

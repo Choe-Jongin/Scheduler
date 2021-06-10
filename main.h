@@ -4,6 +4,8 @@
 #include <time.h>
 #include <sys/time.h>
 #include <fcntl.h>
+#include <sys/wait.h>
+
 
 #include "queue.h"
 #include "message.h"

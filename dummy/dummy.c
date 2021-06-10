@@ -1,9 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 
 int main(int argc, char * argv[])
 {
+	raise(SIGSTOP);	
+
 	char name[64];
 	int deadline;
 	int priority;
