@@ -17,7 +17,7 @@
 #define EX_BURST 1				//processGen 수전 완료 후 1로 수정
 
 #define READ_BUFF_SIZE 256		//파일 읽기 시 한 줄에 몇 글자를 읽는지
-#define HEIGHT	31				//최대 높이		LIST_Y + LIST_SIZE + 1 보단 커야 함
+#define HEIGHT	32				//최대 높이		LIST_Y + LIST_SIZE + 1 보단 커야 함
 #define WIDTH	145				//최대 넓이
 
 #define LIST_Y		9			//큐, 메세지 목록이 시작될 y위치

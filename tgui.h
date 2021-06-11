@@ -61,6 +61,25 @@ void gotoxy (short row, short col)
 {
 	printf ("%c[%d;%dH", 27, row, col);
 }
+void setcolor(int c)
+{
+    if( c < 0 ) 
+        c = 0;
+    if( c > 8 ) 
+        c = 8;
+    switch(c)
+    {
+        case 0: printf("\033[0m"); break;
+        case 1: printf("\033[40m"); break;
+        case 2: printf("\033[41m"); break;
+        case 3: printf("\033[42m"); break;
+        case 4: printf("\033[43m"); break;
+        case 5: printf("\033[44m"); break;
+        case 6: printf("\033[45m"); break;
+        case 7: printf("\033[46m"); break;
+        case 8: printf("\033[47m"); break;
+    }   
+}
 
 //백버퍼에 문자열 삽입 주석처리 해둔 코드는 문자열이 넓이를 넘어갔을 경우 자동개행되게 하는 방법임
 void draw(TGUI * tgui, int x, int y, char * str)
@@ -79,7 +98,7 @@ void showBackBuff(TGUI * tgui)
 //	cls();
 	gotoxy(0,0);
 	for( int r = 0 ; r < tgui->height ; r++)
-		printf("%s\n",tgui->texel[r]);
+		printf("%s  \n",tgui->texel[r]);
 
 }
 

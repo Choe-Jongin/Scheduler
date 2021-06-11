@@ -30,6 +30,17 @@ void showFileList()
 	printf("name arrival burst deadline -> processGen/rtprocess.txt\n");
 	printf("\n");
 }
+void showControlCommand()
+{
+
+	printf("Control command\n");
+	printf("-------------------------------------------------------\n");
+	printf("q : Quit scheduler\n");
+	printf("s : Stop/continue scheduler\n");
+	printf("i : zoom In gantt chart\n");
+	printf("o : zomm Out gnatt chart\n");
+
+}
 void showProcessGenInfo()
 {
 	printf("cd processGen\n");
@@ -49,7 +60,7 @@ int main()
 
 	while(in != 'q')
 	{
-		printf("\nMORE INFO\nRun_Form: r, Algorithm_Info:a, Filelist:f, ProcessGen:p, Quit:q\n>>");
+		printf("\nMORE INFO\nRun_Form: r, Algorithm_Info:a, Filelist:f, ProcessGen:p, Command:c, Quit:q\n>>");
 		in = getchar();
 		getchar();
 		printf("\n");
@@ -59,6 +70,7 @@ int main()
 			case 'a':  showAlgorithmList(); break;
 			case 'f':  showFileList(); break;
 			case 'p':  showProcessGenInfo(); break;
+			case 'c':  showControlCommand(); break;
 		}
 
 	}

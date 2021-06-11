@@ -49,7 +49,6 @@ int main(int argc, char *argv[] )
 			pptype = PP_RT;
 		}
 	}
-//	pptype = getPolicyType(pp);
 
 	//Run Queue 생성(RM 알고리즘)
 	Queue * rq = newQueue(pp);
@@ -78,6 +77,10 @@ int main(int argc, char *argv[] )
 	//특정 스케줄링 알고리즘에 필요한 변수들
 	double timeq = 100*1000;	//RR	time quantum
 	double remainq = 100*1000;	//RR	처리해도 되는 남은 시간 
+
+	//간트 카트에 필요한 변수들
+	int ganttunit = 10;	//간트차트 시간 그래프 한칸 단위의 역수 1:1초, 5: 1/5초 10: 1/10초, 100: 1/100초
+
 
 	//태스트 목록 읽기 및 정보 확인
 	//명시했을 경우
@@ -186,6 +189,14 @@ int main(int argc, char *argv[] )
 				else
 					sprintf(msg->str,"[%dms] Continue", (int)schedulerTime/1000);
 				insertMSG();
+			}
+			if( in == 'i' )
+			{
+				if(++ganttunit > 100 ) ganttunit = 100;
+			}
+			if( in == 'o' )
+			{
+				if(--ganttunit < 5 ) ganttunit = 5;
 			}
 		}
 		/***********************실직적인 메인************************/
@@ -422,8 +433,51 @@ int main(int argc, char *argv[] )
 		
 		/**************************메인 끝***************************/
 		showBackBuff(tgui);
+
+		int ganttW = WIDTH - 5; //간트 차트 그리는 영역의 넓이
+		printf("Task ");
+		double gantttime = schedulerTime / 1000000;
+		int timeoffset = (int)(gantttime*ganttunit) - ganttW;
+		if( timeoffset < 0 )
+			timeoffset = 0;
+		
+		for( int i = timeoffset ; i < ganttW + timeoffset ; i++)
+		{
+			if(i  >= ganttW + timeoffset -2 ){
+				printf("-");
+			}else if( i%ganttunit == 0  ){
+				printf("%d", i/ganttunit);
+			}else if( i%ganttunit == 1 && i/ganttunit >=10 ){
+
+			}else
+				printf("-");
+		}
+		printf("\n");
+
+		for( int i = 1 ; i < 9 ; i++)
+		{
+			setcolor(0); 
+			for( int j = 0 ; j < ganttW ; j++ )
+				printf(" ");
+			printf("\r");
+			printf("P000 ");
+			setcolor(i); 
+			for( int j = 0 ; j < ganttW ; j++ )
+			{
+				if( (j+timeoffset)%ganttunit == 0  )
+					printf("│");
+				else
+					printf(" ");
+			}
+			setcolor(0);
+			printf("\n");
+		}
+
+
 		elap = curr;	// 다음 프레임의 지난 프레임 시간 = 현재 프레임의 시간
 	}
+
+	setcolor(0);
 
 	//메모리 헤제
 	free(horline);
@@ -537,24 +591,4 @@ int kbhit(void)
   }
 
   return 0;
-}
-
-
-
-//도입 고려중인 방식임(현재 실 사용 없음)
-int getPolicyType(int pp)
-{
-	switch(pp)
-	{
-	case FIFO:
-	case SJF:
-		return PP_UNIV;
-	case PRIO:
-		return PP_PRIO;
-	case RM:
-	case EDF:
-		return PP_RT;
-	}
-
-	return PP_UNIV;
 }
