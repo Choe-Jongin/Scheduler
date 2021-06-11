@@ -68,12 +68,16 @@ int main(int argc, char *argv[] )
 	int runtasksize		= 0;					//현재까지 실행한 태스크의 수
 	int size = 0;								//불러온 처리해야 할 태스크의 개수
 	int deadlinemiss = 0;						//데드라인 미스 카운터
-
+	
 	//시간 측정을 위한 변수들
 	struct timeval elap, curr;
 	double delta;				//지난 프레임에서 몇 us가 더 지낫는지
 	gettimeofday(&elap, NULL);
-	
+	int frame			= 0;				//
+	int elapsframe 		= 0;				//
+	int fps 			= 0;				//
+	int framechecktime 	= 0;				//
+
 	//특정 스케줄링 알고리즘에 필요한 변수들
 	double timeq = 100*1000;	//RR	time quantum
 	double remainq = 100*1000;	//RR	처리해도 되는 남은 시간 
@@ -152,9 +156,20 @@ int main(int argc, char *argv[] )
 		if( ispause )
 			delta = 0.0;
 		schedulerTime += delta;	//흐른 시간을 스케줄로 실행시간에 더해줌
-		
+		++frame;
+		if( (int)(schedulerTime/1000000) > framechecktime)
+		{
+			framechecktime = (int)(schedulerTime/1000000);
+			fps = frame - elapsframe;
+			elapsframe = frame;
+		}
+
+
+
 		//백 버퍼 초기화 및 사각 테두리를 백버퍼에 등록(자세하게 안 봐도 됨)
 		invalidRect(tgui,3,3,WIDTH,HEIGHT-1);		
+		if( frame % 1000 == 0 )
+			cls();
 		sprintf(tgui->str,"┌%s┐", horline);
 		draw(tgui,0,0,tgui->str);
 		sprintf(tgui->str,"%s", title);
@@ -209,7 +224,7 @@ int main(int argc, char *argv[] )
 		//실행 정보 표시
 		sprintf(tgui->str,"<SCEHDULER STATUS>");
 		draw(tgui, 5, 3, tgui->str);
-		sprintf(tgui->str,"scheduler excution time : %dms, tick %.3fus", (int)schedulerTime/1000, delta);
+		sprintf(tgui->str,"scheduler excution time:%dms, tick:%.3fus, FPS:%d", (int)schedulerTime/1000, delta, fps);
 		draw(tgui, 5, 4, tgui->str);
 		
 		switch(pptype)
