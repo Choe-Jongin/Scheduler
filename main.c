@@ -124,6 +124,7 @@ int main(int argc, char *argv[] )
 	char * horline = strHorLine(WIDTH);
 	char title[64] = "TEAM 8 SCHEDULER";	
 	char titlesp[WIDTH] = " ";	//타이틀 가운데 정렬 용 공백 문자열
+	char ganttspace[WIDTH];
 	switch(pp)					//타이틀 맨 뒤에 알고리즘 종류 표기
 	{
 		case FIFO:	strcat(title,"(FIFO)"); break;
@@ -138,6 +139,10 @@ int main(int argc, char *argv[] )
 		strcat(titlesp, " ");
 	strcat(titlesp, title);
 	strcpy(title, matchformat(WIDTH,titlesp));
+	for( int i = 0 ; i < ganttW ; i++ )
+		strcat(ganttspace, " ");
+
+
 
 	//시작 전 화면을 지우고 백버퍼도 초기화 함
 	insertStrMSG("scheduler start");
@@ -153,8 +158,8 @@ int main(int argc, char *argv[] )
 		//흐른 시간 확인 
    	 	gettimeofday(&curr, NULL);																			//현재 시간 - 과거 프레임의 시간
 		delta = (curr.tv_sec + curr.tv_usec / 1000000.0 - elap.tv_sec - elap.tv_usec / 1000000.0)*1000000;	//지난 프레임과 비교해서 지난 시간
-		if( ispause )
-			delta = 0.0;
+		elap = curr;	// 다음 프레임의 지난 프레임 시간 = 현재 프레임의 시간if( ispause )
+
 		schedulerTime += delta;	//흐른 시간을 스케줄로 실행시간에 더해줌
 		++frame;
 		if( (int)(schedulerTime/1000000) > framechecktime)
@@ -253,8 +258,9 @@ int main(int argc, char *argv[] )
 
 
 			//
-			logtasks[logtaskindex++] = newLogtask(node->data->name, node->data->arrivaltime, node->data->deadline);
-							
+			logtasks[logtaskindex] = newLogtask(node->data->name, node->data->arrivaltime, node->data->deadline);
+			node->data->logtask = logtasks[logtaskindex++];	
+
 			pid_t pid = fork();//자식 프로세스 분기
 			if( pid < 0 )
 			{
@@ -323,11 +329,13 @@ int main(int argc, char *argv[] )
 				sprintf(msg->str,"[%dms] %s continue processing", (int)schedulerTime/1000, proc->name);
 				insertMSG();
 				remainq = timeq;
+				insertTime(proc->logtask->timelist, newTime(schedulerTime, schedulerTime));
 			}
 			
 			TIMETYPE processingtime = taskupdate(proc, remaindelta);	// task를 처리하는데 소모한 시간
 			remaindelta = remaindelta - processingtime;				// 남은 시간 = 남은시간 - task를 처리하는데 소모한 시간
-			
+			setLastEndTime( proc->logtask->timelist , schedulerTime - remaindelta);
+
 			//태스크가 끝나지 않았을 경우
 			if( proc->state != TASK_FINISH )
 			{
@@ -456,10 +464,14 @@ int main(int argc, char *argv[] )
 			termicountdown -= delta;
 		
 		/**************************메인 끝***************************/
-		showBackBuff(tgui);
+		showBackBuff(tgui);		//
 
+		//
 		printf("Task ");
-		double gantttime = schedulerTime / 1000000;
+		double gantttime = schedulerTime / 1000000; // ganttW/ganttunit = vertical length(time)
+		double ganttleaftime = gantttime-ganttW/ganttunit;
+		if( ganttleaftime < 0 )
+			ganttleaftime = 0;
 		int timeoffset = (int)(gantttime*ganttunit) - ganttW;
 		if( timeoffset < 0 )
 			timeoffset = 0;
@@ -487,25 +499,32 @@ int main(int argc, char *argv[] )
 			if( i > logtaskindex)
 				break;
 
-			setcolor(0); 
-			for( int j = 0 ; j < ganttW ; j++ )
-				printf(" ");
+			setcolor(0);
+			printf("%s",ganttspace);		
 			printf("\r");
-			printf("%-5s", logtasks[i]->name);
-			setcolor(1+i%8);
 
-			for( int j = 0 ; j < ganttW*showW ; j++ )
+			printf("%-5s", logtasks[i]->name);
+			for( int j = 0 ; j < ganttW ; j++ )
 			{
-				if( (j+timeoffset)%ganttunit == 0  )
+				int isp = isProcessingNow(logtasks[i], gantttime-ganttW/ganttunit + (double)j/(double)ganttunit);
+				int isd = isDeadlineNow(logtasks[i], gantttime-ganttW/ganttunit + (double)j/(double)ganttunit, ganttunit);
+
+				if( isp == 1)
+					setcolor(1+i%8);
+				if( isd == 1)
+				{
+					settextcolor(2);
+					printf("+");
+				}
+				else if( (j+timeoffset)%ganttunit == 0  )
 					printf("│");
 				else
 					printf(" ");
 			}
 			setcolor(0);
+			settextcolor(0);
 			printf("\n");
 		}
-
-		elap = curr;	// 다음 프레임의 지난 프레임 시간 = 현재 프레임의 시간
 	}
 
 	setcolor(0);

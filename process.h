@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "log/logtask.h"
+
 //시간정보의 구조체 기존의 int에서 정확도를 위해 double로 바꿈
 #define TIMETYPE double
 
@@ -26,6 +28,7 @@ typedef struct task_struct{
 	TIMETYPE remaintime;	//남아있는 처리 시간
 	int priority;			//우선순위(우선순위 스케줄링에서만 유효, node의 우선수위와는 다른 것임)
 	int state; 				//프로세서 상태  -1: not yet inserted the rq, 0: waiting, 1:running, 2:stoped, 3:finish
+	Logtask * logtask;		//
 
 }Process;
 
@@ -42,6 +45,7 @@ Process * newProcess(char * name, TIMETYPE arr, TIMETYPE burst, TIMETYPE dead, i
 	proc->remaintime	= burst;
 	proc->state			= TASK_LOAD;
 	proc->priority		= priority;
+	proc->logtask 		= NULL;
 
 	return proc;
 }

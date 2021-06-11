@@ -42,26 +42,24 @@ Timelist * newTimelist()
 //큐에 삽입하고 몇 번째에 삽입 했는지 반환
 void insertTime( Timelist * list, Time * time )
 {
-	
 	//큐가 비었으면 헤드에 넣음
 	if( list->head == NULL )
 	{
 		list->head = time;
 		list->tail = time;
-		list->head->next = list->tail;
-		list->tail->prev = list->head;
 	}
 	else
 	{
-		time->prev = list->tail->next;
+		time->prev = list->tail;
 		list->tail->next = time;
+		list->tail = time;
 	}
 
 	list->size++;
 }
 void setLastEndTime(Timelist * list, TIMETYPE end)
 {
-	if( list -> size == 0 )
+	if( list->tail == NULL )
 		return ;
 
 	list->tail->end = end;
@@ -87,10 +85,32 @@ Logtask * newLogtask(char * name, TIMETYPE arr, TIMETYPE dead)
 	task->deadline		= dead;
 	task->realdeadline	= arr + dead;
 	task->timelist = newTimelist();
+	insertTime( task->timelist, newTime(task->arrivaltime, task->arrivaltime));
 	return task;
 }
 
-void destroyLogtask( Logtask * task)
+int isDeadlineNow( Logtask * task, double now, int ganttunit)
+{
+	now = now*1000000;
+	if( task->realdeadline >= now && task->realdeadline <= now+1/(double)ganttunit )
+		return 1;
+	return 0;
+}
+int isProcessingNow( Logtask * task, double now)
+{
+	now = now*1000000;
+	for( Time * time = task->timelist->head ; time != NULL ; time = time->next)
+	{
+		if( now < time->beg || time->end < now )
+			continue;
+		if( time->beg < now && time->end < now )
+			return 1;
+
+	}
+	return 0;
+}
+
+void destroyLogtask( Logtask * task )
 {
 	Time * next;
 	for( Time * time = task->timelist->head ; time != NULL ; time = next)
