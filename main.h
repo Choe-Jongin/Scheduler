@@ -9,6 +9,7 @@
 
 #include "queue.h"
 #include "message.h"
+#include "log/logtask.h"
 #include <termios.h>
 
 

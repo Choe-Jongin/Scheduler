@@ -61,6 +61,25 @@ void gotoxy (short row, short col)
 {
 	printf ("%c[%d;%dH", 27, row, col);
 }
+void settextcolor(int c)
+{
+    if( c < 0 ) 
+        c = 0;
+    if( c > 8 ) 
+        c = 8;
+    switch(c)
+    {
+        case 0: printf("\033[39m"); break;
+        case 1: printf("\033[30m"); break;	// 흑
+        case 2: printf("\033[31m"); break;	// 빨
+        case 3: printf("\033[32m"); break;
+        case 4: printf("\033[33m"); break;
+        case 5: printf("\033[34m"); break;
+        case 6: printf("\033[35m"); break;
+        case 7: printf("\033[36m"); break;
+		case 8: printf("\033[37m"); break; // 백
+	}
+}
 void setcolor(int c)
 {
     if( c < 0 ) 
@@ -69,9 +88,9 @@ void setcolor(int c)
         c = 8;
     switch(c)
     {
-        case 0: printf("\033[0m"); break;
-        case 1: printf("\033[40m"); break;
-        case 2: printf("\033[41m"); break;
+        case 0: printf("\033[49m"); break;
+        case 1: printf("\033[41m"); break;
+        case 2: printf("\033[40m"); break;
         case 3: printf("\033[42m"); break;
         case 4: printf("\033[43m"); break;
         case 5: printf("\033[44m"); break;

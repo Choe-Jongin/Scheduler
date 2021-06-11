@@ -79,8 +79,12 @@ int main(int argc, char *argv[] )
 	double remainq = 100*1000;	//RR	처리해도 되는 남은 시간 
 
 	//간트 카트에 필요한 변수들
-	int ganttunit = 10;	//간트차트 시간 그래프 한칸 단위의 역수 1:1초, 5: 1/5초 10: 1/10초, 100: 1/100초
-
+	Logtask ** logtasks;
+	int ganttunit = 20;	//간트차트 시간 그래프 한칸 단위의 역수 1:1초, 5: 1/5초 10: 1/10초, 100: 1/100초
+	int ganttW = WIDTH - 5; //간트 차트 그리는 영역의 넓이
+	int ganttH = 10;			//간트 차트 그리는 영역의
+	int ganttINDEX = 0;
+	int logtaskindex = 0;
 
 	//태스트 목록 읽기 및 정보 확인
 	//명시했을 경우
@@ -110,7 +114,8 @@ int main(int argc, char *argv[] )
 	}
 
 	size = g_tasklist->size;
-	
+	logtasks = (Logtask**)malloc(sizeof(Logtask*)*size);
+
 	//수평선, 타이틀명 상수 문자열화(한번만 만들고 재활용)
 	char * horline = strHorLine(WIDTH);
 	char title[64] = "TEAM 8 SCHEDULER";	
@@ -230,6 +235,10 @@ int main(int argc, char *argv[] )
 			int index = insertNode(rq, node);	//해당 노드가 몇번 째 위치에 삽입 되었는지 저장
 			sprintf(msg->str,"[%dms] %s arrive", (int)schedulerTime/1000, node->data->name);
 			insertMSG();
+
+
+			//
+			logtasks[logtaskindex++] = newLogtask(node->data->name, node->data->arrivaltime, node->data->deadline);
 							
 			pid_t pid = fork();//자식 프로세스 분기
 			if( pid < 0 )
@@ -434,35 +443,43 @@ int main(int argc, char *argv[] )
 		/**************************메인 끝***************************/
 		showBackBuff(tgui);
 
-		int ganttW = WIDTH - 5; //간트 차트 그리는 영역의 넓이
 		printf("Task ");
 		double gantttime = schedulerTime / 1000000;
 		int timeoffset = (int)(gantttime*ganttunit) - ganttW;
 		if( timeoffset < 0 )
 			timeoffset = 0;
+		float showW = gantttime/(ganttW/ganttunit);
+		if(showW > 1.0f)
+			showW = 1.0f;
 		
 		for( int i = timeoffset ; i < ganttW + timeoffset ; i++)
 		{
-			if(i  >= ganttW + timeoffset -2 ){
+			if( i%ganttunit == 1 && i/ganttunit >=10 ){
+
+			}else if( i == ganttW + timeoffset - 1 ){
 				printf("-");
 			}else if( i%ganttunit == 0  ){
 				printf("%d", i/ganttunit);
-			}else if( i%ganttunit == 1 && i/ganttunit >=10 ){
-
 			}else
 				printf("-");
 		}
-		printf("\n");
+		printf(" \n");
 
-		for( int i = 1 ; i < 9 ; i++)
+		for( int i = 0 ; i < logtaskindex ; i++)
 		{
+			if( i < logtaskindex - ganttH )
+				continue;
+			if( i > logtaskindex)
+				break;
+
 			setcolor(0); 
 			for( int j = 0 ; j < ganttW ; j++ )
 				printf(" ");
 			printf("\r");
-			printf("P000 ");
-			setcolor(i); 
-			for( int j = 0 ; j < ganttW ; j++ )
+			printf("%-5s", logtasks[i]->name);
+			setcolor(1+i%8);
+
+			for( int j = 0 ; j < ganttW*showW ; j++ )
 			{
 				if( (j+timeoffset)%ganttunit == 0  )
 					printf("│");
@@ -473,7 +490,6 @@ int main(int argc, char *argv[] )
 			printf("\n");
 		}
 
-
 		elap = curr;	// 다음 프레임의 지난 프레임 시간 = 현재 프레임의 시간
 	}
 
@@ -482,6 +498,12 @@ int main(int argc, char *argv[] )
 	//메모리 헤제
 	free(horline);
 	
+	for( int i = 0 ; i < logtaskindex ; i++){
+		destroyLogtask(logtasks[i]);
+		free(logtasks[i]);
+	}
+	free(logtasks);
+
 	destroyTgui(tgui);
 	destroyQueue(g_tasklist);
 	destroyQueue(rq);
