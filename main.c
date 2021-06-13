@@ -86,9 +86,9 @@ int main(int argc, char *argv[] )
 	Logtask ** logtasks;
 	int ganttunit = 14;	//간트차트 시간 그래프 한칸 단위의 역수 1:1초, 5: 1/5초 10: 1/10초, 100: 1/100초
 	int ganttW = WIDTH - 5; //간트 차트 그리는 영역의 넓이
-	int ganttH = 10;			//간트 차트 그리는 영역의
-	int ganttINDEX = 0;
-	int logtaskindex = 0;
+	int ganttH = 10;		//간트 차트 그리는 영역의
+	int ganttINDEX = 0;		//
+	int logtaskindex = 0;	//
 
 	//태스트 목록 읽기 및 정보 확인
 	//명시했을 경우
@@ -141,8 +141,6 @@ int main(int argc, char *argv[] )
 	strcpy(title, matchformat(WIDTH,titlesp));
 	for( int i = 0 ; i < ganttW ; i++ )
 		strcat(ganttspace, " ");
-
-
 
 	//시작 전 화면을 지우고 백버퍼도 초기화 함
 	insertStrMSG("scheduler start");
@@ -254,7 +252,6 @@ int main(int argc, char *argv[] )
 			int index = insertNode(rq, node);	//해당 노드가 몇번 째 위치에 삽입 되었는지 저장
 			sprintf(msg->str,"[%dms] %s arrive", (int)schedulerTime/1000, node->data->name);
 			insertMSG();
-
 
 			//
 			logtasks[logtaskindex] = newLogtask(node->data->name, node->data->arrivaltime, node->data->deadline);
@@ -524,7 +521,7 @@ int main(int argc, char *argv[] )
 				{
 					isp = !isp;
 					if( isp == 1)	//
-						setcolor(i%9);
+						setcolor(1+i%9);
 					else
 						setcolor(0);
 				}
