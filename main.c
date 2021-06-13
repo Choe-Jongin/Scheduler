@@ -84,7 +84,7 @@ int main(int argc, char *argv[] )
 
 	//간트 카트에 필요한 변수들
 	Logtask ** logtasks;
-	int ganttunit = 20;	//간트차트 시간 그래프 한칸 단위의 역수 1:1초, 5: 1/5초 10: 1/10초, 100: 1/100초
+	int ganttunit = 14;	//간트차트 시간 그래프 한칸 단위의 역수 1:1초, 5: 1/5초 10: 1/10초, 100: 1/100초
 	int ganttW = WIDTH - 5; //간트 차트 그리는 영역의 넓이
 	int ganttH = 10;			//간트 차트 그리는 영역의
 	int ganttINDEX = 0;
@@ -159,7 +159,8 @@ int main(int argc, char *argv[] )
    	 	gettimeofday(&curr, NULL);																			//현재 시간 - 과거 프레임의 시간
 		delta = (curr.tv_sec + curr.tv_usec / 1000000.0 - elap.tv_sec - elap.tv_usec / 1000000.0)*1000000;	//지난 프레임과 비교해서 지난 시간
 		elap = curr;	// 다음 프레임의 지난 프레임 시간 = 현재 프레임의 시간if( ispause )
-
+		if( ispause )
+			delta = 0.0;
 		schedulerTime += delta;	//흐른 시간을 스케줄로 실행시간에 더해줌
 		++frame;
 		if( (int)(schedulerTime/1000000) > framechecktime)
@@ -168,8 +169,6 @@ int main(int argc, char *argv[] )
 			fps = frame - elapsframe;
 			elapsframe = frame;
 		}
-
-
 
 		//백 버퍼 초기화 및 사각 테두리를 백버퍼에 등록(자세하게 안 봐도 됨)
 		invalidRect(tgui,3,3,WIDTH,HEIGHT-1);		
@@ -321,6 +320,8 @@ int main(int argc, char *argv[] )
 				totwaiting += currnode->waiting;
 				avgwaiting = totwaiting/(runtasksize);
 				remainq = timeq;
+				
+				insertTime(proc->logtask->timelist, newTime(schedulerTime-delta, schedulerTime));
 			}
 			//STOP상태였으면
 			else if( proc->state == TASK_STOP )
@@ -329,11 +330,14 @@ int main(int argc, char *argv[] )
 				sprintf(msg->str,"[%dms] %s continue processing", (int)schedulerTime/1000, proc->name);
 				insertMSG();
 				remainq = timeq;
-				insertTime(proc->logtask->timelist, newTime(schedulerTime, schedulerTime));
+
+				insertTime(proc->logtask->timelist, newTime(schedulerTime-delta, schedulerTime));
 			}
 			
 			TIMETYPE processingtime = taskupdate(proc, remaindelta);	// task를 처리하는데 소모한 시간
 			remaindelta = remaindelta - processingtime;				// 남은 시간 = 남은시간 - task를 처리하는데 소모한 시간
+
+			//
 			setLastEndTime( proc->logtask->timelist , schedulerTime - remaindelta);
 
 			//태스크가 끝나지 않았을 경우
@@ -360,6 +364,7 @@ int main(int argc, char *argv[] )
 						{
 							currnode->isdeadmiss = 1;
 							deadlinemiss++;
+							currnode->data->logtask->state = 1;
 							sprintf(msg->str,"[%dms] %s deadline miss", (int)schedulerTime/1000, proc->name);
 			                insertMSG();
 						}
@@ -469,15 +474,15 @@ int main(int argc, char *argv[] )
 		//
 		printf("Task ");
 		double gantttime = schedulerTime / 1000000; // ganttW/ganttunit = vertical length(time)
-		double ganttlefttime = gantttime-ganttW/ganttunit;
+		double ganttlefttime = gantttime-ganttW/ganttunit;	//
 		if( ganttlefttime < 0 )
 			ganttlefttime = 0;
 		int timeoffset = (int)(gantttime*ganttunit) - ganttW;
 		if( timeoffset < 0 )
 			timeoffset = 0;
-		float showW = gantttime/(ganttW/ganttunit);
-		if(showW > 1.0f)
-			showW = 1.0f;
+//		float showW = gantttime/(ganttW/ganttunit);
+//		if(showW > 1.0f)
+//			showW = 1.0f;
 		
 		for( int i = timeoffset ; i < ganttW + timeoffset ; i++)
 		{
@@ -496,34 +501,47 @@ int main(int argc, char *argv[] )
 		{
 			if( i < logtaskindex - ganttH )
 				continue;
-			if( i > logtaskindex)
-				break;
 
 			setcolor(0);
 			printf("%s",ganttspace);		
 			printf("\r");
+			if( logtasks[i]->state == 1 )
+				printf("\033[31m%-5s\033[39m", logtasks[i]->name);
+			else
+				printf("%-5s", logtasks[i]->name);
+			
+			int isp = 0;
+			int isa = 0;	
+			int isd = 0;
 
-			printf("%-5s", logtasks[i]->name);
 			for( int j = 0 ; j < ganttW ; j++ )
 			{
-				int isp = isProcessingNow(logtasks[i], ganttlefttime + (double)j/(double)ganttunit);
-				int isd = isDeadlineNow(logtasks[i], ganttlefttime + (double)j/(double)ganttunit, ganttunit);
+		
+				isa = isNowArrival(logtasks[i], ganttlefttime, j, ganttunit);	
+				isd = isNowDeadline(logtasks[i], ganttlefttime, j, ganttunit);
 
-				if( isp == 1)
-					setcolor(1+i%8);
-				if( isd == 1)
+				if( isp != isNowProcessing(logtasks[i], ganttlefttime, j, ganttunit) )
 				{
-					settextcolor(1);
-					printf("+");
+					isp = !isp;
+					if( isp == 1)	//
+						setcolor(i%9);
+					else
+						setcolor(0);
 				}
+
+				if( isd == 1 )
+					printf("!");
+				else if( isa == 1 )
+					printf(">");
 				else if( (j+timeoffset)%ganttunit == 0  )
 					printf("│");
 				else
 					printf(" ");
 			}
 			setcolor(0);
-			settextcolor(0);
-			printf("\n");
+			printf("\n");  
+			
+			//printLogtaskInfo(logtasks[i]);
 		}
 	}
 

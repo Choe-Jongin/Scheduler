@@ -89,8 +89,8 @@ void setcolor(int c)
     switch(c)
     {
         case 0: printf("\033[49m"); break;
-        case 1: printf("\033[41m"); break;
-        case 2: printf("\033[40m"); break;
+        case 1: printf("\033[40m"); break;
+        case 2: printf("\033[41m"); break;
         case 3: printf("\033[42m"); break;
         case 4: printf("\033[43m"); break;
         case 5: printf("\033[44m"); break;
