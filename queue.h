@@ -1,5 +1,6 @@
 #pragma once
 #include "process.h"
+#include "message.h"
 
 //알고리즘 번호
 #define FIFO	0				
@@ -9,6 +10,7 @@
 #define RR		4
 #define RM		5
 #define EDF		6
+#define HRN		7
 
 #define nonpreemptive 0
 #define preemptive 1
@@ -21,8 +23,6 @@ typedef struct element
 	struct element * next;
 	Process * data;
 	int priority;			//노드의 우선순위, 오름차순 이기에 수치가 낮을 수록 우선순위가 높음
-	TIMETYPE waiting;       //도착 후 실제 처리 시작까지 걸린 시간(대기 시간)
-	int isdeadmiss;			//데드라인 미스(1이면 MISS)
 }Node;
 
 //알고리즘 별 우선순위 값을 찾아줌
@@ -34,19 +34,21 @@ int getPriority( Process * proc, int pp )
  	switch( pp )
 	{
 	case FIFO:	//도착시간 순 (FIFO)
-		return (int)proc->arrivaltime;
+		return (int)proc->arrivaltime/1000;
 	case SJF:	//짧은 작업 순(SJF)
-		return (int)proc->bursttime;
+		return (int)proc->bursttime/1000;
 	case SRF:	//짧은 잔여 작업 순(SRF)
-		return (int)proc->remaintime;
+		return (int)proc->remaintime/1000;
 	case PRIO:	//우선순위 순(PRIO)
 		return proc->priority;
 	case RR:	//라운드 로빈(RR), 일반큐(선입선출큐, 이 선입선출은 스케줄리 알고리즘이 아님)
 		return 0;
 	case RM:	//데드라인 적은 순(RM)
-		return (int)proc->deadline;
+		return (int)proc->deadline/1000;
 	case EDF:	//현재 시점 마감 임박 순(EDF)
-		return (int)proc->realdeadline;
+		return (int)proc->realdeadline/1000;
+	case HRN:
+		return (int)(proc->waiting/proc->bursttime + 1)/1000*-1;
 	}
 
 	return 0;
@@ -60,8 +62,6 @@ Node * newNode(Process * proc, int pp)
 	newnode->next 		= NULL;
 	newnode->data 		= proc;
 	newnode->priority	= getPriority(proc, pp);	
-	newnode->waiting	= 0;
-	newnode->isdeadmiss	= 0;
 	return newnode;
 }
 
@@ -190,6 +190,41 @@ Node * popQueue( Queue * queue)
 	queue->size--;
 
 	return tempnode;
+}
+void UpdateQueue(Queue * queue, TIMETYPE schedulertime)
+{
+	for( Node * it = queue->head ; it != queue->endnode ; it = it->next )
+	{	
+		//
+		if( it->data->state == TASK_WAIT )
+			it->data->waiting = schedulertime - it->data->arrivaltime;
+		//
+		if( it->data->isdeadlinemiss == 0 && it->data->realdeadline < schedulertime )
+		{	
+			it->data->isdeadlinemiss = 1;
+			it->data->logtask->state = 1;
+            sprintf(msg->str,"[%dms] %s deadline miss", (int)schedulertime/1000, it->data->name);
+			insertMSG();
+		}
+		//
+		it->priority = getPriority(it->data, queue->pp);
+	}
+
+	//
+	if( queue -> pp == HRN )
+	{
+		Queue * newqueue = newQueue(queue->pp);
+		
+		while( queue->head != queue->endnode )
+			insertNode(newqueue, popQueue(queue));
+		
+		while( newqueue->head != newqueue->endnode )
+			insertNode(queue, popQueue(newqueue));
+
+		free(newqueue);
+	}
+		
+	
 }
 
 //소멸자

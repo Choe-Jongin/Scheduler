@@ -87,7 +87,7 @@ int main(int argc, char *argv[] )
 	int ganttunit = 14;	//간트차트 시간 그래프 한칸 단위의 역수 1:1초, 5: 1/5초 10: 1/10초, 100: 1/100초
 	int ganttW = WIDTH - 5; //간트 차트 그리는 영역의 넓이
 	int ganttH = 10;		//간트 차트 그리는 영역의
-	int ganttINDEX = 0;		//
+	int ganttIndex = 0;		//
 	int logtaskindex = 0;	//
 
 	//태스트 목록 읽기 및 정보 확인
@@ -220,6 +220,14 @@ int main(int argc, char *argv[] )
 			{
 				if(--ganttunit < 5 ) ganttunit = 5;
 			}
+			if( in == 'A' )
+			{
+				if(--ganttIndex < ganttH ) ganttIndex = ganttH;
+			}
+			if( in == 'B' )
+			{
+				if( ++ganttIndex > logtaskindex ) ganttIndex = logtaskindex;
+			}
 		}
 		/***********************실직적인 메인************************/
 
@@ -255,7 +263,9 @@ int main(int argc, char *argv[] )
 
 			//
 			logtasks[logtaskindex] = newLogtask(node->data->name, node->data->arrivaltime, node->data->deadline);
-			node->data->logtask = logtasks[logtaskindex++];	
+			node->data->logtask = logtasks[logtaskindex];
+			if( logtaskindex++ == ganttIndex )
+				ganttIndex++;
 
 			pid_t pid = fork();//자식 프로세스 분기
 			if( pid < 0 )
@@ -293,7 +303,10 @@ int main(int argc, char *argv[] )
 				}
 			}
 		}
-		
+
+		//
+		UpdateQueue(rq, schedulerTime);
+
 		//진짜 실행해야 하는 단 하나의 노드를 처리 하는 부분
 		TIMETYPE remaindelta = delta;	//소모하고 남아있는데 델타값(흐른시간 = 이번 프레임에 처리 할 수 있는 양)
 		Node * currnode = NULL;			
@@ -305,16 +318,15 @@ int main(int argc, char *argv[] )
 			Process * proc = currnode->data;
 			//wait이였으면(즉 처음으로 처리단계에 들어왔으면)
 			if( proc->state == TASK_WAIT )
-			{	
+			{
 				//처음으로 처리를 시작했다고 메세지와 로그를 남김
 				sprintf(msg->str,"[%dms] %s start processing", (int)schedulerTime/1000, proc->name);
 				insertMSG();
 
-				currnode->waiting = schedulerTime - proc->arrivaltime;
 				runtasksize++;			//현재까지 실행한 태스크의 수
-				if( currnode->waiting > maxwaiting )
-					maxwaiting = currnode->waiting;
-				totwaiting += currnode->waiting;
+				if( currnode->data->waiting > maxwaiting )
+					maxwaiting = currnode->data->waiting;
+				totwaiting += currnode->data->waiting;
 				avgwaiting = totwaiting/(runtasksize);
 				remainq = timeq;
 				
@@ -330,10 +342,11 @@ int main(int argc, char *argv[] )
 
 				insertTime(proc->logtask->timelist, newTime(schedulerTime-delta, schedulerTime));
 			}
-			
+		
 			TIMETYPE processingtime = taskupdate(proc, remaindelta);	// task를 처리하는데 소모한 시간
-			remaindelta = remaindelta - processingtime;				// 남은 시간 = 남은시간 - task를 처리하는데 소모한 시간
-
+			remaindelta = remaindelta - processingtime;					// 남은 시간 = 남은시간 - task를 처리하는데 소모한 시간
+			proc->waiting -= remaindelta;								//
+			
 			//
 			setLastEndTime( proc->logtask->timelist , schedulerTime - remaindelta);
 
@@ -348,30 +361,31 @@ int main(int argc, char *argv[] )
 					if (proc->realdeadline >= schedulerTime )
 					{
 						sprintf(tgui->str,"[%dms] RUN : %s, remain %.0fus, watting time : %dms real deadline %dms", 
-							(int)schedulerTime/1000, proc->name, proc->remaintime, (int)currnode->waiting/1000, (int)proc->realdeadline/1000);
+							(int)schedulerTime/1000, proc->name, proc->remaintime, (int)currnode->data->waiting/1000, (int)proc->realdeadline/1000);
 					}
+					
 					//데드라인 미스
 					else
 					{
 						sprintf(tgui->str,"[%dms] RUN : %s, remain %.0fus, watting time : %dms real deadline %dms, DEADLINE MISS", 
-							(int)schedulerTime/1000, proc->name, proc->remaintime, (int)currnode->waiting/1000, (int)proc->realdeadline/1000);
+							(int)schedulerTime/1000, proc->name, proc->remaintime, (int)currnode->data->waiting/1000, (int)proc->realdeadline/1000);
 						
 						//여기는 미스당 딱 한번만 들어와 함
-						if( currnode->isdeadmiss == 0 )
+						if( currnode->data->isdeadlinemiss == 0 )
 						{
-							currnode->isdeadmiss = 1;
+							currnode->data->isdeadlinemiss = 1;
 							deadlinemiss++;
 							currnode->data->logtask->state = 1;
 							sprintf(msg->str,"[%dms] %s deadline miss", (int)schedulerTime/1000, proc->name);
 			                insertMSG();
 						}
 					}
-				}
-				//Real Time 스케줄러가 아니면 간단하게 현재 정보 만 출력
+				
+				}//Real Time 스케줄러가 아니면 간단하게 현재 정보 만 출력
 				else
 				{
 					sprintf(tgui->str,"[%dms] RUN : %s, remain %.0fus, watting time : %dms", 
-						(int)schedulerTime/1000, proc->name, proc->remaintime, (int)currnode->waiting/1000);
+						(int)schedulerTime/1000, proc->name, proc->remaintime, (int)currnode->data->waiting/1000);
 				}
 				draw(tgui, 5, 6, tgui->str);
 
@@ -384,7 +398,6 @@ int main(int argc, char *argv[] )
 						taskstop(proc);
 						sprintf(msg->str,"[%dms] %s consume all time quantum", (int)schedulerTime/1000, proc->name);
 	                    insertMSG();
-
 					}
 				}
 
@@ -396,6 +409,10 @@ int main(int argc, char *argv[] )
 				kill(proc->pid,SIGKILL);
 				sprintf(msg->str,"[%dms] %s finish", (int)schedulerTime/1000, proc->name);
 				insertMSG();
+				if( proc->isdeadlinemiss == 0)
+					currnode->data->logtask->state = 2;
+				else
+					currnode->data->logtask->state = 3;
 				//추출한 노드를 삽입하지 않고 메모리 해제
 				free(currnode->data);
 				free(currnode);
@@ -494,18 +511,22 @@ int main(int argc, char *argv[] )
 		}
 		printf(" \n");
 
-		for( int i = 0 ; i < logtaskindex ; i++)
+		for( int i = 0 ; i < ganttIndex ; i++)
 		{
-			if( i < logtaskindex - ganttH )
+			if( i < ganttIndex - ganttH )
 				continue;
 
 			setcolor(0);
-			printf("%s",ganttspace);		
+		//	printf("%s",ganttspace);		
 			printf("\r");
-			if( logtasks[i]->state == 1 )
+			
+			if( logtasks[i]->state >= 2 )
+				printf("\033[1m");
+
+			if( logtasks[i]->state%2 == 1 )
 				printf("\033[31m%-5s\033[39m", logtasks[i]->name);
 			else
-				printf("%-5s", logtasks[i]->name);
+				printf("%-5s\033[0m", logtasks[i]->name);
 			
 			int isp = 0;
 			int isa = 0;	
@@ -527,7 +548,7 @@ int main(int argc, char *argv[] )
 				}
 
 				if( isd == 1 )
-					printf("!");
+					printf("<");
 				else if( isa == 1 )
 					printf(">");
 				else if( (j+timeoffset)%ganttunit == 0  )
