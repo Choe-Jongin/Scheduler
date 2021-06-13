@@ -81,8 +81,8 @@ Logtask * newLogtask(char * name, TIMETYPE arr, TIMETYPE dead)
 	Logtask * task = (Logtask*)malloc(sizeof(Logtask));
 
 	strcpy(task->name, name);
-	task->arrivaltime 	= arr;
-	task->deadline		= dead;
+	task->arrivaltime 	= arr/1000000;
+	task->deadline		= dead/1000000;
 	task->realdeadline	= arr + dead;
 	task->timelist = newTimelist();
 	insertTime( task->timelist, newTime(task->arrivaltime, task->arrivaltime));
@@ -91,19 +91,19 @@ Logtask * newLogtask(char * name, TIMETYPE arr, TIMETYPE dead)
 
 int isDeadlineNow( Logtask * task, double now, int ganttunit)
 {
-	now = now*1000000;
-	if( task->realdeadline >= now && task->realdeadline <= now+1/(double)ganttunit )
+	if( now <= task->realdeadline && task->realdeadline <= now+(double)1/(double)ganttunit )
 		return 1;
 	return 0;
 }
 int isProcessingNow( Logtask * task, double now)
 {
-	now = now*1000000;
 	for( Time * time = task->timelist->head ; time != NULL ; time = time->next)
 	{
-		if( now < time->beg || time->end < now )
+		if( now < time->beg )
+		       break;
+		if( time->end < now )
 			continue;
-		if( time->beg < now && time->end < now )
+		if( time->beg < now && now < time->end )
 			return 1;
 
 	}

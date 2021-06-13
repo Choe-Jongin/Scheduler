@@ -469,9 +469,9 @@ int main(int argc, char *argv[] )
 		//
 		printf("Task ");
 		double gantttime = schedulerTime / 1000000; // ganttW/ganttunit = vertical length(time)
-		double ganttleaftime = gantttime-ganttW/ganttunit;
-		if( ganttleaftime < 0 )
-			ganttleaftime = 0;
+		double ganttlefttime = gantttime-ganttW/ganttunit;
+		if( ganttlefttime < 0 )
+			ganttlefttime = 0;
 		int timeoffset = (int)(gantttime*ganttunit) - ganttW;
 		if( timeoffset < 0 )
 			timeoffset = 0;
@@ -506,14 +506,14 @@ int main(int argc, char *argv[] )
 			printf("%-5s", logtasks[i]->name);
 			for( int j = 0 ; j < ganttW ; j++ )
 			{
-				int isp = isProcessingNow(logtasks[i], gantttime-ganttW/ganttunit + (double)j/(double)ganttunit);
-				int isd = isDeadlineNow(logtasks[i], gantttime-ganttW/ganttunit + (double)j/(double)ganttunit, ganttunit);
+				int isp = isProcessingNow(logtasks[i], ganttlefttime + (double)j/(double)ganttunit);
+				int isd = isDeadlineNow(logtasks[i], ganttlefttime + (double)j/(double)ganttunit, ganttunit);
 
 				if( isp == 1)
 					setcolor(1+i%8);
 				if( isd == 1)
 				{
-					settextcolor(2);
+					settextcolor(1);
 					printf("+");
 				}
 				else if( (j+timeoffset)%ganttunit == 0  )
