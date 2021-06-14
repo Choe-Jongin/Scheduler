@@ -48,6 +48,11 @@ int main(int argc, char *argv[] )
 			pp = EDF;
 			pptype = PP_RT;
 		}
+		else if( strcmp(argv[1], "HRN") == 0 )
+		{	
+			pp = HRN;
+			pptype = PP_UNIV;
+		}
 	}
 
 	//Run Queue 생성(RM 알고리즘)
@@ -86,7 +91,7 @@ int main(int argc, char *argv[] )
 	Logtask ** logtasks;
 	int ganttunit = 14;	//간트차트 시간 그래프 한칸 단위의 역수 1:1초, 5: 1/5초 10: 1/10초, 100: 1/100초
 	int ganttW = WIDTH - 5; //간트 차트 그리는 영역의 넓이
-	int ganttH = 10;		//간트 차트 그리는 영역의
+	int ganttH = 20;		//간트 차트 그리는 영역의
 	int ganttIndex = 0;		//
 	int logtaskindex = 0;	//
 
@@ -134,6 +139,7 @@ int main(int argc, char *argv[] )
 		case RR:	strcat(title,"(RR)"); break;
 		case RM:	strcat(title,"(RM)"); break;
 		case EDF:	strcat(title,"(EDF)"); break;
+		case HRN:	strcat(title,"(HRN)"); break;
 	}
 	for( int i = 0 ; i < (WIDTH-strlen(title))/2 -2 ; i++ )
 		strcat(titlesp, " ");
@@ -305,7 +311,7 @@ int main(int argc, char *argv[] )
 		}
 
 		//
-		UpdateQueue(rq, schedulerTime);
+		deadlinemiss += UpdateQueue(rq, schedulerTime);
 
 		//진짜 실행해야 하는 단 하나의 노드를 처리 하는 부분
 		TIMETYPE remaindelta = delta;	//소모하고 남아있는데 델타값(흐른시간 = 이번 프레임에 처리 할 수 있는 양)
@@ -374,8 +380,8 @@ int main(int argc, char *argv[] )
 						if( currnode->data->isdeadlinemiss == 0 )
 						{
 							currnode->data->isdeadlinemiss = 1;
-							deadlinemiss++;
 							currnode->data->logtask->state = 1;
+							deadlinemiss++;
 							sprintf(msg->str,"[%dms] %s deadline miss", (int)schedulerTime/1000, proc->name);
 			                insertMSG();
 						}
@@ -523,8 +529,8 @@ int main(int argc, char *argv[] )
 			if( logtasks[i]->state >= 2 )
 				printf("\033[1m");
 
-			if( logtasks[i]->state%2 == 1 )
-				printf("\033[31m%-5s\033[39m", logtasks[i]->name);
+			if( logtasks[i]->state == 1 || logtasks[i]->state == 3 )
+				printf("\033[31m%-5s\033[0m", logtasks[i]->name);
 			else
 				printf("%-5s\033[0m", logtasks[i]->name);
 			

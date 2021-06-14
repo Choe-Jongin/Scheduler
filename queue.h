@@ -178,7 +178,7 @@ int insertNewNode( Queue * queue, Process * proc )
 Node * popQueue( Queue * queue)
 {
 	//큐가 비었으면 
-	if( queue->head <= queue->endnode )
+	if( queue->head == queue->endnode )
 			return NULL;
 
 	Node * tempnode = queue->head;
@@ -191,16 +191,18 @@ Node * popQueue( Queue * queue)
 
 	return tempnode;
 }
-void UpdateQueue(Queue * queue, TIMETYPE schedulertime)
+int UpdateQueue(Queue * queue, TIMETYPE schedulertime)
 {
+	int deadlinemiss = 0;
 	for( Node * it = queue->head ; it != queue->endnode ; it = it->next )
 	{	
 		//
 		if( it->data->state == TASK_WAIT )
 			it->data->waiting = schedulertime - it->data->arrivaltime;
 		//
-		if( it->data->isdeadlinemiss == 0 && it->data->realdeadline < schedulertime )
+		if( (queue->pp == RM ||queue->pp == EDF) && it->data->isdeadlinemiss == 0 && it->data->realdeadline < schedulertime )
 		{	
+			++deadlinemiss;
 			it->data->isdeadlinemiss = 1;
 			it->data->logtask->state = 1;
             sprintf(msg->str,"[%dms] %s deadline miss", (int)schedulertime/1000, it->data->name);
@@ -213,7 +215,7 @@ void UpdateQueue(Queue * queue, TIMETYPE schedulertime)
 	//
 	if( queue -> pp == HRN )
 	{
-		Queue * newqueue = newQueue(queue->pp);
+		Queue * newqueue = newQueue(FIFO);
 		
 		while( queue->head != queue->endnode )
 			insertNode(newqueue, popQueue(queue));
@@ -224,7 +226,7 @@ void UpdateQueue(Queue * queue, TIMETYPE schedulertime)
 		free(newqueue);
 	}
 		
-	
+	return deadlinemiss;
 }
 
 //소멸자
