@@ -91,9 +91,14 @@ int main(int argc, char *argv[] )
 	Logtask ** logtasks;
 	int ganttunit = 14;	//간트차트 시간 그래프 한칸 단위의 역수 1:1초, 5: 1/5초 10: 1/10초, 100: 1/100초
 	int ganttW = WIDTH - 5; //간트 차트 그리는 영역의 넓이
-	int ganttH = 20;		//간트 차트 그리는 영역의
+	int ganttH = 10;		//간트 차트 그리는 영역의
 	int ganttIndex = 0;		//몇번째 프로세스를 그릴지 선택하는 변수
 	int logtaskindex = 0;	//지금까지 등록된 로그태스크(간트차트 태스크)의 수
+	
+	if( argc > 2 && atoi(argv[2]) != 0 )
+		ganttH = atoi(argv[2]);
+
+
 
 	//태스트 목록 읽기 및 정보 확인
 	//명시했을 경우
