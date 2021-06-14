@@ -78,10 +78,10 @@ int main(int argc, char *argv[] )
 	struct timeval elap, curr;
 	double delta;				//지난 프레임에서 몇 us가 더 지낫는지
 	gettimeofday(&elap, NULL);
-	int frame			= 0;				//
-	int elapsframe 		= 0;				//
-	int fps 			= 0;				//
-	int framechecktime 	= 0;				//
+	int frame			= 0;				//스케줄러 실행 후 몇 프레임이 지났는지
+	int elapsframe 		= 0;				//지난 초에 프레임
+	int fps 			= 0;				//지난 1초당안의 프레임
+	int framechecktime 	= 0;				//1초마다 한번식 체크를 하기 위한 변수
 
 	//특정 스케줄링 알고리즘에 필요한 변수들
 	double timeq = 100*1000;	//RR	time quantum
@@ -92,8 +92,8 @@ int main(int argc, char *argv[] )
 	int ganttunit = 14;	//간트차트 시간 그래프 한칸 단위의 역수 1:1초, 5: 1/5초 10: 1/10초, 100: 1/100초
 	int ganttW = WIDTH - 5; //간트 차트 그리는 영역의 넓이
 	int ganttH = 20;		//간트 차트 그리는 영역의
-	int ganttIndex = 0;		//
-	int logtaskindex = 0;	//
+	int ganttIndex = 0;		//몇번째 프로세스를 그릴지 선택하는 변수
+	int logtaskindex = 0;	//지금까지 등록된 로그태스크(간트차트 태스크)의 수
 
 	//태스트 목록 읽기 및 정보 확인
 	//명시했을 경우
@@ -129,7 +129,7 @@ int main(int argc, char *argv[] )
 	char * horline = strHorLine(WIDTH);
 	char title[64] = "TEAM 8 SCHEDULER";	
 	char titlesp[WIDTH] = " ";	//타이틀 가운데 정렬 용 공백 문자열
-	char ganttspace[WIDTH];
+	char ganttspace[WIDTH];		//간트차트 화면 지우기 용 공백 문자열
 	switch(pp)					//타이틀 맨 뒤에 알고리즘 종류 표기
 	{
 		case FIFO:	strcat(title,"(FIFO)"); break;
@@ -202,14 +202,14 @@ int main(int argc, char *argv[] )
 		if( kbhit() )
 		{
 			char in = getchar();
-			if( in == 'q')
+			if( in == 'q')	//즉시종료(메모리 해제는 함)
 			{
 				sprintf(msg->str,"[%dms] Quit", (int)schedulerTime/1000);
 				insertMSG();
 	            isrunning = 0;
 				termicountdown = 0.0;
 			}
-			if( in == 's')
+			if( in == 's')	//일시정지/재개
 			{
 				ispause = !ispause;
 				if( ispause )
@@ -218,19 +218,19 @@ int main(int argc, char *argv[] )
 					sprintf(msg->str,"[%dms] Continue", (int)schedulerTime/1000);
 				insertMSG();
 			}
-			if( in == 'i' )
+			if( in == 'i' )	//간트차트 확대
 			{
 				if(++ganttunit > 100 ) ganttunit = 100;
 			}
-			if( in == 'o' )
+			if( in == 'o' ) //간트차트 축소
 			{
 				if(--ganttunit < 5 ) ganttunit = 5;
 			}
-			if( in == 'A' )
+			if( in == 'A' )	//위쪽(지나간) 로그태스크 보기
 			{
 				if(--ganttIndex < ganttH ) ganttIndex = ganttH;
 			}
-			if( in == 'B' )
+			if( in == 'B' )	//아래쪽(최신) 로그태스크 보기
 			{
 				if( ++ganttIndex > logtaskindex ) ganttIndex = logtaskindex;
 			}
@@ -293,9 +293,11 @@ int main(int argc, char *argv[] )
 				insertMSG();
 				break;
 			}
-					
+			
+			//자식프로세스 제대로 실행될때까지 대기
 			waitpid(pid,0,WUNTRACED);
 			node->data->pid = pid;
+
 			//우선순위가 가장 높은게 도착한 것이였을 경우(맨 앞에 저장되었을 경우)
 			if( index == 0 )
 			{
@@ -310,7 +312,7 @@ int main(int argc, char *argv[] )
 			}
 		}
 
-		//
+		//매 프레임마다 런큐 노드의 정보를 최신화 함(최신화 시 데드라인미스 확인)
 		deadlinemiss += UpdateQueue(rq, schedulerTime);
 
 		//진짜 실행해야 하는 단 하나의 노드를 처리 하는 부분
@@ -351,9 +353,9 @@ int main(int argc, char *argv[] )
 		
 			TIMETYPE processingtime = taskupdate(proc, remaindelta);	// task를 처리하는데 소모한 시간
 			remaindelta = remaindelta - processingtime;					// 남은 시간 = 남은시간 - task를 처리하는데 소모한 시간
-			proc->waiting -= remaindelta;								//
+			proc->waiting -= remaindelta;								// 대기시간은 지난 스케줄러 시간+처리시작 시간
 			
-			//
+			//로그용 시간 리스트의 마지막 노드 시간을 현재 시간으로 바꿈
 			setLastEndTime( proc->logtask->timelist , schedulerTime - remaindelta);
 
 			//태스크가 끝나지 않았을 경우
@@ -376,7 +378,7 @@ int main(int argc, char *argv[] )
 						sprintf(tgui->str,"[%dms] RUN : %s, remain %.0fus, watting time : %dms real deadline %dms, DEADLINE MISS", 
 							(int)schedulerTime/1000, proc->name, proc->remaintime, (int)currnode->data->waiting/1000, (int)proc->realdeadline/1000);
 						
-						//여기는 미스당 딱 한번만 들어와 함
+						//여기는 미스당 딱 한번만 들어와 함(이젠 매프레임 자동 Update라 여기에 안 들어오나 혹시 몰라서 남겨둠)
 						if( currnode->data->isdeadlinemiss == 0 )
 						{
 							currnode->data->isdeadlinemiss = 1;
@@ -415,6 +417,7 @@ int main(int argc, char *argv[] )
 				kill(proc->pid,SIGKILL);
 				sprintf(msg->str,"[%dms] %s finish", (int)schedulerTime/1000, proc->name);
 				insertMSG();
+				//로그 정보 수정( 2:정상종료, 3:데드라인 미스 후 종료 )
 				if( proc->isdeadlinemiss == 0)
 					currnode->data->logtask->state = 2;
 				else
@@ -489,21 +492,20 @@ int main(int argc, char *argv[] )
 			termicountdown -= delta;
 		
 		/**************************메인 끝***************************/
-		showBackBuff(tgui);		//
+		showBackBuff(tgui);		//백버퍼를 화면에 출력
 
-		//
+		//간트차트 그리는 영역
 		printf("Task ");
 		double gantttime = schedulerTime / 1000000; // ganttW/ganttunit = vertical length(time)
-		double ganttlefttime = gantttime-ganttW/ganttunit;	//
-		if( ganttlefttime < 0 )
+		double ganttlefttime = gantttime-ganttW/ganttunit;	//간트차트의 맨 왼쪽 시간
+		if( ganttlefttime < 0 )			//음수는 0초로 고정
 			ganttlefttime = 0;
-		int timeoffset = (int)(gantttime*ganttunit) - ganttW;
+
+		//시간이 지난 만큼 간트차를 오른쪽으로 이동시키는 변수
+		int timeoffset = (int)(gantttime*ganttunit) - ganttW;	
 		if( timeoffset < 0 )
 			timeoffset = 0;
-//		float showW = gantttime/(ganttW/ganttunit);
-//		if(showW > 1.0f)
-//			showW = 1.0f;
-		
+		//간트차트 시간 라인 그리는 부분
 		for( int i = timeoffset ; i < ganttW + timeoffset ; i++)
 		{
 			if( i%ganttunit == 1 && i/ganttunit >=10 ){
@@ -516,59 +518,64 @@ int main(int argc, char *argv[] )
 				printf("-");
 		}
 		printf(" \n");
+		setcolor(0); //색상값 리셋
 
+		//각 로그태스크의 간트차트 그리는 부분
 		for( int i = 0 ; i < ganttIndex ; i++)
 		{
 			if( i < ganttIndex - ganttH )
 				continue;
 
-			setcolor(0);
 		//	printf("%s",ganttspace);		
 			printf("\r");
 			
+			//끝난 태스크는 이름을 굵게 표시
 			if( logtasks[i]->state >= 2 )
 				printf("\033[1m");
 
+			//데드라인 미스는 빨간 이름으로 표시
 			if( logtasks[i]->state == 1 || logtasks[i]->state == 3 )
 				printf("\033[31m%-5s\033[0m", logtasks[i]->name);
 			else
 				printf("%-5s\033[0m", logtasks[i]->name);
 			
-			int isp = 0;
-			int isa = 0;	
-			int isd = 0;
+			int isp = 0;	//특정 시각에 처리중인가(배경색변경)
+			int isa = 0;	//특정 시각에 도착한것인가('>'출력)
+			int isd = 0;	//특정 시각에 데드라인인가('<'출력)
 
 			for( int j = 0 ; j < ganttW ; j++ )
 			{
-		
-				isa = isNowArrival(logtasks[i], ganttlefttime, j, ganttunit);	
+				//간트차트 맨 왼쪽에서 j칸 만큼 오른쪽의 시간에서 당시에 도착/데드라인인지 확인
+				isa = isNowArrival(logtasks[i], ganttlefttime, j, ganttunit);
 				isd = isNowDeadline(logtasks[i], ganttlefttime, j, ganttunit);
 
+				//j와 j-1의 isp가 다르면
 				if( isp != isNowProcessing(logtasks[i], ganttlefttime, j, ganttunit) )
 				{
-					isp = !isp;
-					if( isp == 1)	//
+					isp = !isp;//isp변경
+					if( isp == 1)	//처리중 상태로 진입한거면 배경 색 변경
 						setcolor(1+i%9);
-					else
+					else			//처리중이 아닌 상태인거면 배경 색 리셋
 						setcolor(0);
 				}
 
-				if( isd == 1 )
+				if( isd == 1 )		//데드라인이면 <
 					printf("<");
-				else if( isa == 1 )
+				else if( isa == 1 )	//도착이면 >
 					printf(">");
-				else if( (j+timeoffset)%ganttunit == 0  )
-					printf("│");
-				else
+				else if( (j+timeoffset)%ganttunit == 0  ) // 딱 n초이면 세로줄
+					printf("│");	
+				else				//아무것도 아니면 공백(처리중이면 배경색 출력)
 					printf(" ");
 			}
-			setcolor(0);
+			setcolor(0); //색상값 리셋
 			printf("\n");  
 			
-			//printLogtaskInfo(logtasks[i]);
+			//printLogtaskInfo(logtasks[i]); 디버깅용(태스크 정보와 시간들을 태스크당 2줄씩 출력)
 		}
 	}
 
+	//배경색상값 초기화
 	setcolor(0);
 
 	//메모리 헤제
