@@ -106,15 +106,13 @@ int main(int argc, char * argv[])
 		for( int i = 0 ; i < size ; i++ )
 		{
 			char processname[64];
-			int arrivtime 	= ((float)(rand()%(size-1))/size)*exptime*(expCPU/100.0f) + (rand()%300) MSEC + rand()%1000;
-			int bursttime 	= ((float)((rand()%1000)*1000 + rand()%1000)/500000.0f)*((float)expCPU/100.0f)*exptime/size;
+			int arrivtime 	= (float)(rand()%(size-1))/size*exptime + (rand()%300) MSEC + rand()%1000;
+			int bursttime 	= (float)(exptime/size)*(float)(rand()%2000)/1000*(float)expCPU/100.0f;
 			int deadline	= (int)(bursttime*( 1.3f + (float)(rand()%100)/100.0f ));
 			int priority	= rand()%(size);
-//			int deadline	= size * 1000 + rand()%(9 MSEC *size);
-//			int bursttime 	= 1 + (deadline*(rand()%((expCPU-1)/5)))/(size*10);
 			
-			//sprintf(processname,"%c%c%c%c%04d", (65+rand()%26), (65+rand()%26), (65+rand()%26), (65+rand()%26), rand()%10000);
 			sprintf(processname,"p%d",i);
+
 			switch( type )
 			{
 			case 0: //universal
