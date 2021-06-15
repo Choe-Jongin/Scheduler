@@ -99,7 +99,8 @@ int main(int argc, char * argv[])
 	int totalWCET = 0;
 	int totaldead = 0;
 	float totalCPUutil = 0;
-	
+
+	printf("%d\n",exptime);
 	switch( dist )
 	{
 	case 0:
